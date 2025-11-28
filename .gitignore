@@ -51,9 +51,5 @@ Thumbs.db
 # Logs
 *.log
 
-# Sensitive data
-account.txt
-x.json
-
 # Keep example files
 !x.json.example

@@ -1,0 +1,2985 @@
+[
+
+    {
+
+        "label": "#opentensor",
+
+        "keyword": null,
+
+        "start_datetime": null,
+
+        "end_datetime": null,
+
+        "weight": 2.8735632183908044
+
+    },
+
+    {
+
+        "label": "$tao",
+
+        "keyword": null,
+
+        "start_datetime": null,
+
+        "end_datetime": null,
+
+        "weight": 2.8735632183908044
+
+    },
+
+    {
+
+        "label": "#bittensor",
+
+        "keyword": null,
+
+        "start_datetime": null,
+
+        "end_datetime": null,
+
+        "weight": 2.8735632183908044
+
+    },
+
+    {
+
+        "label": "#depin",
+
+        "keyword": null,
+
+        "start_datetime": null,
+
+        "end_datetime": null,
+
+        "weight": 1.1494252873563218
+
+    },
+
+    {
+
+        "label": "#sprintbioscience",
+
+        "keyword": null,
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.1494252873563218
+
+    },
+
+    {
+
+        "label": "#saniona",
+
+        "keyword": null,
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.1494252873563218
+
+    },
+
+    {
+
+        "label": "#camurus",
+
+        "keyword": null,
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.1494252873563218
+
+    },
+
+    {
+
+        "label": "#alligatorscience",
+
+        "keyword": null,
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.1494252873563218
+
+    },
+
+    {
+
+        "label": "#bitcoin",
+
+        "keyword": null,
+
+        "start_datetime": null,
+
+        "end_datetime": null,
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#bitcoiner",
+
+        "keyword": null,
+
+        "start_datetime": null,
+
+        "end_datetime": null,
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#bitcoinnews",
+
+        "keyword": null,
+
+        "start_datetime": null,
+
+        "end_datetime": null,
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#btc",
+
+        "keyword": null,
+
+        "start_datetime": null,
+
+        "end_datetime": null,
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#crypto",
+
+        "keyword": null,
+
+        "start_datetime": null,
+
+        "end_datetime": null,
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#defi",
+
+        "keyword": null,
+
+        "start_datetime": null,
+
+        "end_datetime": null,
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#decentralizedfinance",
+
+        "keyword": null,
+
+        "start_datetime": null,
+
+        "end_datetime": null,
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#tao",
+
+        "keyword": null,
+
+        "start_datetime": null,
+
+        "end_datetime": null,
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#Israel",
+
+        "keyword": null,
+
+        "start_datetime": null,
+
+        "end_datetime": null,
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#Ukraine",
+
+        "keyword": null,
+
+        "start_datetime": null,
+
+        "end_datetime": null,
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#Trump",
+
+        "keyword": null,
+
+        "start_datetime": null,
+
+        "end_datetime": null,
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#Harris",
+
+        "keyword": null,
+
+        "start_datetime": null,
+
+        "end_datetime": null,
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#macrocosmos",
+
+        "keyword": null,
+
+        "start_datetime": null,
+
+        "end_datetime": null,
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#MacrocosmosAI",
+
+        "keyword": null,
+
+        "start_datetime": null,
+
+        "end_datetime": null,
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#AI",
+
+        "keyword": "Bittensor",
+
+        "start_datetime": "2025-10-27T05:00:00Z",
+
+        "end_datetime": "2025-11-27T05:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#TAO",
+
+        "keyword": "Bittensor",
+
+        "start_datetime": "2025-10-27T05:00:00Z",
+
+        "end_datetime": "2025-11-27T05:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#Bittensor",
+
+        "keyword": "TAO",
+
+        "start_datetime": "2025-10-27T05:00:00Z",
+
+        "end_datetime": "2025-11-27T05:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "Bittensor TAO tweet",
+
+        "start_datetime": "2025-10-27T05:00:00Z",
+
+        "end_datetime": "2025-11-27T05:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "Bittensor TAO most liked",
+
+        "start_datetime": "2025-10-27T05:00:00Z",
+
+        "end_datetime": "2025-11-27T05:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "Bittensor TAO 2025",
+
+        "start_datetime": "2025-10-27T05:00:00Z",
+
+        "end_datetime": "2025-11-27T05:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#Crypto",
+
+        "keyword": "Bittensor TAO",
+
+        "start_datetime": "2025-10-27T05:00:00Z",
+
+        "end_datetime": "2025-11-27T05:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "1993135067280126038",
+
+        "start_datetime": "2024-10-31T21:00:00Z",
+
+        "end_datetime": "2025-11-29T21:00:00Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "ai agents",
+
+        "start_datetime": "2025-10-25T15:00:00Z",
+
+        "end_datetime": "2025-11-25T14:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "autogpt",
+
+        "start_datetime": "2025-10-25T15:00:00Z",
+
+        "end_datetime": "2025-11-25T14:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "devin ai",
+
+        "start_datetime": "2025-10-25T15:00:00Z",
+
+        "end_datetime": "2025-11-25T14:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#llmagents",
+
+        "keyword": "llm agents",
+
+        "start_datetime": "2025-10-25T15:00:00Z",
+
+        "end_datetime": "2025-11-25T14:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#gpt4",
+
+        "keyword": "autonomous ai",
+
+        "start_datetime": "2025-10-25T15:00:00Z",
+
+        "end_datetime": "2025-11-25T14:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#aiagents",
+
+        "keyword": "ai agents",
+
+        "start_datetime": "2025-10-25T15:00:00Z",
+
+        "end_datetime": "2025-11-25T14:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#devinai",
+
+        "keyword": "devin ai",
+
+        "start_datetime": "2025-10-25T15:00:00Z",
+
+        "end_datetime": "2025-11-25T14:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#autogpt",
+
+        "keyword": "autogpt",
+
+        "start_datetime": "2025-10-25T15:00:00Z",
+
+        "end_datetime": "2025-11-25T14:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#taostats",
+
+        "keyword": null,
+
+        "start_datetime": null,
+
+        "end_datetime": null,
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#corcel",
+
+        "keyword": null,
+
+        "start_datetime": null,
+
+        "end_datetime": null,
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#taoshi",
+
+        "keyword": null,
+
+        "start_datetime": null,
+
+        "end_datetime": null,
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#ai",
+
+        "keyword": null,
+
+        "start_datetime": null,
+
+        "end_datetime": null,
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "fifa 2026 betting",
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "2026 world cup odds",
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#usa2026",
+
+        "keyword": "host nation prospects",
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#fifa2026",
+
+        "keyword": "champion predictions",
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#soccertalk",
+
+        "keyword": "2026 finalist",
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#worldcup2026",
+
+        "keyword": "who will win",
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "investor relations update",
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#sobi",
+
+        "keyword": null,
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "clinical trial start",
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#egetistherapeutics",
+
+        "keyword": null,
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#diamydmedical",
+
+        "keyword": null,
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "drug approval",
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "biotech funding",
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "pharma press release",
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#hansa",
+
+        "keyword": null,
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#mendus",
+
+        "keyword": null,
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#elicera",
+
+        "keyword": null,
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#cinclus",
+
+        "keyword": null,
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#bioinvent",
+
+        "keyword": null,
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#annexinpharma",
+
+        "keyword": null,
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#nanexa",
+
+        "keyword": null,
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#orexo",
+
+        "keyword": null,
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "sobi updates",
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "bioinvent breakthroughs",
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "mendus therapeutic",
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "annexin pharmaceuticals",
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#nanexaab",
+
+        "keyword": null,
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "orexo news",
+
+        "start_datetime": "2025-10-23T22:00:00Z",
+
+        "end_datetime": "2025-11-23T22:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#bittensor",
+
+        "keyword": "tao",
+
+        "start_datetime": "2025-10-22T23:00:00Z",
+
+        "end_datetime": "2025-11-22T23:59:59Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#fintech",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#community",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#Bolivia",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "development",
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#lithium",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#Colombia",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "earthquakes",
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#earthquakes",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "risk assessment",
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#CreatorBurnout",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#MentalHealth",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "tiktok burnout",
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "creative burnout",
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#Mexico",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#congestionpricing",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#waterpolicy",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#USA",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#UkraineWar",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "Ukraine war",
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#lira",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "Balkans digital",
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#Ethiopia",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#loadshedding",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#energytransition",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "Nigeria",
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "Vision 2030",
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "Australia",
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "bushfire season",
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "preparedness",
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#bushfires",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#Australia",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#climate",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "Ethereum",
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#GenZ",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#CoinMarketCap",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#TAOUSDT",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#bittensor",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#opentensor",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "watch time",
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "EU ads",
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#PoliticalAds",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#TTPA",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#Experiential",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#CostOfLiving",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "grocery prices",
+
+        "start_datetime": "2025-08-20T10:19:20.248932Z",
+
+        "end_datetime": "2025-11-18T10:19:20.248932Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#CreatorBurnout",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#LFC",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#NVIDIA",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "jensen huang",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#AIMusic",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "ai song",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#AIAudio",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "text to audio",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "scalp detox",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#ScalpCare",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#HeadSpa",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "japanese head spa",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#Marathon",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "Zoomfly",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "Endorphin Speed",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "carbon plated",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "carbon plate shoes",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#Relax",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "Autonomous Sensory Meridian Response",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "natty",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "Beta-Alanine",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "Glutamine",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "preworkout",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "gym supplements",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#Creatine",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "pre-workout",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "fre pouch",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "Sesh+",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "alp pouch",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#TobaccoFree",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#HarmReduction",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#NicotinePouches",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#AirFryer",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "ptfe",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#Cookware",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#AIAgents",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#GenAI",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#AGI",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "openai",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#AIinCode",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "artificial intelligence",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "AGI",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#AIinEducation",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "gen ai",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "open ai",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "genai",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "ai agents",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "claude",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "gpt",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "open source model",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "generative ai",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "free palestine",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#Ceasefire",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#AllEyesOnRafah",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "yellow line",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "palestine",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "ceasefire",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "gaza",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "all eyes on rafah",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "ice vehicle",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "us border patrol",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#Immigration",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "chicago ice",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "ice detention",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#Border",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#DHS",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "green policy",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "petrol subsidies",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "diesel subsidies",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#FarmersProtest",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "soccer injury",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "2026 Champions League",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "football club",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "soccer league",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "champions league",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "2025 Champions League",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#UEFA",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "soccer injuries",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "football league",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "football champions",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#YouTube",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "iphone17",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#AppleEvent",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#iPhone17",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "iphone scratch",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "iphone 17",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "bull run",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "glp-1",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#Wegovy",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#Ozempic",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "weight loss drug",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": null,
+
+        "keyword": "glp 1",
+
+        "start_datetime": "2025-08-16T18:13:02.140593Z",
+
+        "end_datetime": "2025-11-14T18:13:02.140593Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#PublicSafety",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-06T11:35:52.757975Z",
+
+        "end_datetime": "2025-11-04T11:35:52.757975Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#FreezeTheRent",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-06T11:35:52.757975Z",
+
+        "end_datetime": "2025-11-04T11:35:52.757975Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#HousingCrisis",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-06T11:35:52.757975Z",
+
+        "end_datetime": "2025-11-04T11:35:52.757975Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#NYCPolitics",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-06T11:35:52.757975Z",
+
+        "end_datetime": "2025-11-04T11:35:52.757975Z",
+
+        "weight": 1.0
+
+    },
+
+    {
+
+        "label": "#MamdaniForMayor",
+
+        "keyword": null,
+
+        "start_datetime": "2025-08-06T11:35:52.757975Z",
+
+        "end_datetime": "2025-11-04T11:35:52.757975Z",
+
+        "weight": 1.0
+
+    }
+
+]
