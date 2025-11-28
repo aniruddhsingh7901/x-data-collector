@@ -1,0 +1,23 @@
+[
+    {
+        "label": "#opentensor",
+        "keyword": null,
+        "start_datetime": null,
+        "end_datetime": null,
+        "weight": 2.8735632183908044
+    },
+    {
+        "label": "#bitcoin",
+        "keyword": "mining",
+        "start_datetime": "2024-11-01T00:00:00Z",
+        "end_datetime": "2024-11-29T23:59:59Z",
+        "weight": 1.5
+    },
+    {
+        "label": "#AI",
+        "keyword": "machine learning",
+        "start_datetime": null,
+        "end_datetime": null,
+        "weight": 2.0
+    }
+]
