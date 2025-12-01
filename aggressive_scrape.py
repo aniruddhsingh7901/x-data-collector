@@ -34,7 +34,7 @@ MAX_REPLIES_PER_TWEET = -1  # -1 = unlimited, or set a number like 500
 
 import asyncio
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Dict, Optional, Set
 from enum import Enum
@@ -318,13 +318,20 @@ async def expand_network(api: API, storage: TweetStorage, seed_tweet_ids: Set[st
     stats = {"network_tweets": 0, "network_users": 0, "retweeters": 0}
     new_tweet_ids = set()
     processed_users = set()
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     
     for tweet_id in list(seed_tweet_ids)[:100]:  # Limit to first 100 to avoid overwhelming
         try:
-            # Get conversation thread (replies)
+            # Get conversation thread (replies) - only last 30 days
             reply_count = 0
             async for tweet in api.tweet_replies(tweet_id, limit=50):
                 if tweet.id not in seed_tweet_ids and tweet.id not in new_tweet_ids:
+                    # Check if tweet is within last 30 days
+                    tweet_date = tweet.date if hasattr(tweet, 'date') else None
+                    if tweet_date and tweet_date < thirty_days_ago:
+                        logger.debug(f"[{job.label}] Skipping old network reply from {tweet_date.date()} (older than 30 days)")
+                        continue
+                    
                     new_tweet_ids.add(tweet.id)
                     tweet_data = extract_rich_metadata(tweet)
                     tweet_data['job_label'] = f"{job.label}_network"
@@ -334,7 +341,7 @@ async def expand_network(api: API, storage: TweetStorage, seed_tweet_ids: Set[st
                     reply_count += 1
             
             if reply_count > 0:
-                logger.debug(f"[{job.label}] Found {reply_count} replies for tweet {tweet_id}")
+                logger.debug(f"[{job.label}] Found {reply_count} replies (within 30 days) for tweet {tweet_id}")
             
             # Get users who retweeted (sample)
             retweeter_count = 0
@@ -343,9 +350,15 @@ async def expand_network(api: API, storage: TweetStorage, seed_tweet_ids: Set[st
                     processed_users.add(user.id)
                     stats["retweeters"] += 1
                     
-                    # Get recent tweets from these users (light sampling)
+                    # Get recent tweets from these users (light sampling) - only last 30 days
                     async for user_tweet in api.user_tweets(user.id, limit=10):
                         if user_tweet.id not in seed_tweet_ids and user_tweet.id not in new_tweet_ids:
+                            # Check if tweet is within last 30 days
+                            user_tweet_date = user_tweet.date if hasattr(user_tweet, 'date') else None
+                            if user_tweet_date and user_tweet_date < thirty_days_ago:
+                                logger.debug(f"[{job.label}] Skipping old user tweet from {user_tweet_date.date()} (older than 30 days)")
+                                continue
+                            
                             new_tweet_ids.add(user_tweet.id)
                             tweet_data = extract_rich_metadata(user_tweet)
                             tweet_data['job_label'] = f"{job.label}_network"
@@ -355,7 +368,7 @@ async def expand_network(api: API, storage: TweetStorage, seed_tweet_ids: Set[st
                             retweeter_count += 1
             
             if retweeter_count > 0:
-                logger.debug(f"[{job.label}] Found {retweeter_count} tweets from retweeters")
+                logger.debug(f"[{job.label}] Found {retweeter_count} tweets (within 30 days) from retweeters")
         
         except Exception as e:
             logger.warning(f"[{job.label}] Error expanding from tweet {tweet_id}: {e}")
@@ -448,12 +461,20 @@ async def scrape_job(api: API, job: ScrapingJob, storage: TweetStorage) -> Dict:
                 if stats["posts"] % 100 == 0:
                     logger.info(f"[{job.label}] Stored {stats['posts']} posts")
                 
-                # Get replies for this tweet
+                # Get replies for this tweet (only last 30 days)
                 try:
                     reply_count = 0
                     reply_limit = MAX_REPLIES_PER_TWEET if SCRAPE_ALL_REPLIES else 100
+                    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+                    
                     async for reply in api.tweet_replies(tweet.id, limit=reply_limit):
                         if reply.id not in tweet_ids_seen:
+                            # Check if reply is within last 30 days
+                            reply_date = reply.date if hasattr(reply, 'date') else None
+                            if reply_date and reply_date < thirty_days_ago:
+                                logger.debug(f"[{job.label}] Skipping old reply from {reply_date.date()} (older than 30 days)")
+                                continue
+                            
                             tweet_ids_seen.add(reply.id)
                             
                             # Extract rich metadata for reply
@@ -468,7 +489,7 @@ async def scrape_job(api: API, job: ScrapingJob, storage: TweetStorage) -> Dict:
                             reply_count += 1
                     
                     if reply_count > 0:
-                        logger.debug(f"[{job.label}] Stored {reply_count} replies for tweet {tweet.id}")
+                        logger.debug(f"[{job.label}] Stored {reply_count} replies (within 30 days) for tweet {tweet.id}")
                 
                 except Exception as e:
                     logger.warning(f"[{job.label}] Error getting replies for {tweet.id}: {e}")
@@ -536,8 +557,9 @@ async def scrape_job(api: API, job: ScrapingJob, storage: TweetStorage) -> Dict:
 
 async def scrape_jobs_concurrently(jobs: List[ScrapingJob], max_concurrent: int = 10):
     """
-    Scrape multiple jobs concurrently
+    Scrape multiple jobs concurrently using a dynamic queue
     All data stored in SQLite database
+    When a worker finishes a job, it immediately picks up the next one from the queue
     """
     # Create storage
     storage = TweetStorage("tweets.db")
@@ -545,23 +567,63 @@ async def scrape_jobs_concurrently(jobs: List[ScrapingJob], max_concurrent: int 
     # Create API instance (shared across jobs)
     api = API("accounts.db")
     
-    # Create semaphore to limit concurrency
-    semaphore = asyncio.Semaphore(max_concurrent)
+    # Create a queue and add all jobs
+    import random
+    job_queue = asyncio.Queue()
+    shuffled_jobs = list(jobs)
+    random.shuffle(shuffled_jobs)  # Randomize job order
+    for job in shuffled_jobs:
+        await job_queue.put(job)
     
-    async def scrape_with_semaphore(job):
-        async with semaphore:
-            return await scrape_job(api, job, storage)
+    # Track results
+    results = []
+    results_lock = asyncio.Lock()
+    
+    async def worker(worker_id: int):
+        """Worker that processes jobs from the queue"""
+        while True:
+            try:
+                # Get a job from the queue (non-blocking check)
+                job = await asyncio.wait_for(job_queue.get(), timeout=0.1)
+            except asyncio.TimeoutError:
+                # No more jobs in queue
+                break
+            
+            try:
+                logger.info(f"[Worker {worker_id}] Starting job: {job.label}")
+                result = await scrape_job(api, job, storage)
+                async with results_lock:
+                    results.append(result)
+                logger.info(f"[Worker {worker_id}] Completed job: {job.label}")
+            except Exception as e:
+                logger.error(f"[Worker {worker_id}] Job {job.label} failed: {e}")
+                async with results_lock:
+                    results.append(e)
+            finally:
+                job_queue.task_done()
     
     # Log start
     logger.info("="*80)
     logger.info(f"STARTING CONCURRENT SCRAPING: {len(jobs)} jobs")
-    logger.info(f"Max concurrent: {max_concurrent}")
+    logger.info(f"Max concurrent workers: {max_concurrent}")
     logger.info(f"Database: tweets.db")
+    logger.info(f"Jobs will be processed dynamically - workers pick up new jobs as they complete")
     logger.info("="*80)
     
-    # Run jobs concurrently
+    # Run workers concurrently
     start_time = datetime.now()
-    results = await asyncio.gather(*[scrape_with_semaphore(job) for job in jobs], return_exceptions=True)
+    workers = [asyncio.create_task(worker(i)) for i in range(max_concurrent)]
+    
+    # Wait for all jobs to complete
+    await job_queue.join()
+    
+    # Cancel workers (they're waiting for more jobs but queue is empty)
+    for w in workers:
+        w.cancel()
+    
+    # Wait for workers to finish cancelling
+    await asyncio.gather(*workers, return_exceptions=True)
+    
     duration = datetime.now() - start_time
     
     # Calculate totals
@@ -606,11 +668,14 @@ async def scrape_jobs_concurrently(jobs: List[ScrapingJob], max_concurrent: int 
 
 
 def load_jobs_from_json(filepath: str) -> List[ScrapingJob]:
-    """Load scraping jobs from JSON file with enhanced parameters"""
+    """Load scraping jobs from JSON file with enhanced parameters and prioritization"""
     with open(filepath, 'r') as f:
         data = json.load(f)
     
     jobs = []
+    new_jobs = []
+    old_jobs = []
+    
     for item in data:
         job = ScrapingJob(
             label=item.get('label'),
@@ -624,9 +689,21 @@ def load_jobs_from_json(filepath: str) -> List[ScrapingJob]:
             enable_network_expansion=item.get('enable_network_expansion', False),
             max_network_depth=item.get('max_network_depth', 1),
         )
-        jobs.append(job)
+        
+        # Prioritize new jobs from gravity
+        if item.get('is_new', False):
+            new_jobs.append(job)
+        else:
+            old_jobs.append(job)
     
-    return jobs
+    # Return new jobs first (sorted by weight), then old jobs
+    new_jobs_sorted = sorted(new_jobs, key=lambda x: x.weight, reverse=True)
+    old_jobs_sorted = sorted(old_jobs, key=lambda x: x.weight, reverse=True)
+    
+    if new_jobs_sorted:
+        logger.info(f"Prioritizing {len(new_jobs_sorted)} NEW jobs from gravity")
+    
+    return new_jobs_sorted + old_jobs_sorted
 
 
 def create_multilingual_jobs(base_jobs: List[ScrapingJob], 
@@ -719,8 +796,8 @@ async def main():
         network_str = " [+network]" if job.enable_network_expansion else ""
         logger.info(f"  {i}. {job.label}{keyword_str}{lang_str}{strategy_str}{network_str} ({job.start_date.date()} to {job.end_date.date()})")
     
-    # Start scraping (max 10 concurrent to avoid overwhelming the system)
-    await scrape_jobs_concurrently(jobs, max_concurrent=10)
+    # Start scraping (max 25 concurrent to avoid overwhelming the system)
+    await scrape_jobs_concurrently(jobs, max_concurrent=25)
 
 
 if __name__ == "__main__":
