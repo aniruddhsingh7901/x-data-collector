@@ -384,6 +384,8 @@ async def scrape_job(api: API, job: ScrapingJob, storage: TweetStorage) -> Dict:
     Enhanced scraping with network expansion and smart pagination
     Store in SQLite database with resume capability
     """
+    from twscrape.models import parse_tweets
+    
     query = job.build_query()
     logger.info(f"Starting job: {job}")
     logger.info(f"Query: {query}")
@@ -412,8 +414,12 @@ async def scrape_job(api: API, job: ScrapingJob, storage: TweetStorage) -> Dict:
     
     # Check for existing pagination state (resume capability)
     existing_state = await pagination_mgr.get_state(query_hash)
+    resume_cursor = None
     if existing_state and not existing_state.get('completed'):
+        resume_cursor = existing_state.get('cursor')
         logger.info(f"[{job.label}] Resuming from previous run - {existing_state['items_fetched']} tweets already collected")
+        if resume_cursor:
+            logger.info(f"[{job.label}] Resuming from cursor: {resume_cursor[:20]}...")
     
     tweet_ids_seen = set()
     seed_tweet_ids = set()  # For network expansion
@@ -430,87 +436,104 @@ async def scrape_job(api: API, job: ScrapingJob, storage: TweetStorage) -> Dict:
     }
     
     try:
-        # Scrape main posts
+        # Scrape main posts using raw API to track cursors
         logger.info(f"[{job.label}] Searching posts...")
-        async for tweet in api.search(query, limit=-1):
-            if tweet.id not in tweet_ids_seen:
-                tweet_ids_seen.add(tweet.id)
-                
-                # Check keyword filter if specified
-                if job.keyword:
-                    if job.keyword.lower() not in tweet.rawContent.lower():
-                        continue
-                
-                # Extract rich metadata
-                tweet_data = extract_rich_metadata(tweet)
-                tweet_data['job_label'] = job.label
-                tweet_data['job_keyword'] = job.keyword
-                tweet_data['search_strategy'] = job.strategy.value
-                if job.language:
-                    tweet_data['search_language'] = job.language
-                
-                # Store in database
-                storage.store_tweet(tweet_data)
-                stats["posts"] += 1
-                
-                # Track for network expansion
-                if job.enable_network_expansion:
-                    seed_tweet_ids.add(tweet.id)
-                
-                # Log progress every 100 tweets
-                if stats["posts"] % 100 == 0:
-                    logger.info(f"[{job.label}] Stored {stats['posts']} posts")
-                
-                # Get replies for this tweet (only last 30 days)
-                try:
-                    reply_count = 0
-                    reply_limit = MAX_REPLIES_PER_TWEET if SCRAPE_ALL_REPLIES else 100
-                    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
-                    
-                    async for reply in api.tweet_replies(tweet.id, limit=reply_limit):
-                        if reply.id not in tweet_ids_seen:
-                            # Check if reply is within last 30 days
-                            reply_date = reply.date if hasattr(reply, 'date') else None
-                            if reply_date and reply_date < thirty_days_ago:
-                                logger.debug(f"[{job.label}] Skipping old reply from {reply_date.date()} (older than 30 days)")
-                                continue
-                            
-                            tweet_ids_seen.add(reply.id)
-                            
-                            # Extract rich metadata for reply
-                            reply_data = extract_rich_metadata(reply)
-                            reply_data['job_label'] = job.label
-                            reply_data['job_keyword'] = job.keyword
-                            reply_data['in_reply_to_user_id'] = str(tweet.user.id) if hasattr(tweet.user, 'id') else None
-                            
-                            # Store reply
-                            storage.store_tweet(reply_data)
-                            stats["replies"] += 1
-                            reply_count += 1
-                    
-                    if reply_count > 0:
-                        logger.debug(f"[{job.label}] Stored {reply_count} replies (within 30 days) for tweet {tweet.id}")
-                
-                except Exception as e:
-                    logger.warning(f"[{job.label}] Error getting replies for {tweet.id}: {e}")
-                
-                # Track retweets
-                if tweet.retweetedTweet:
-                    stats["retweets"] += 1
-                
-                # Update pagination state every 100 tweets
-                if stats["posts"] % 100 == 0:
-                    await pagination_mgr.create_or_update_state(
-                        query_hash=query_hash,
-                        query_text=query,
-                        items_fetched=stats["posts"],
-                        completed=False
-                    )
+        current_cursor = resume_cursor
         
-        # Mark query as completed
+        # Build kv dict with cursor if resuming
+        search_kv = {}
+        if resume_cursor:
+            search_kv["cursor"] = resume_cursor
+            logger.info(f"[{job.label}] Starting from saved cursor position")
+        
+        async for rep in api.search_raw(query, limit=-1, kv=search_kv if search_kv else None):
+            # Extract cursor from response
+            obj = rep.json()
+            from twscrape.utils import find_obj
+            cursor_obj = find_obj(obj, lambda x: x.get("cursorType") == "Bottom")
+            if cursor_obj:
+                current_cursor = cursor_obj.get("value")
+            
+            # Parse tweets from response
+            for tweet in parse_tweets(obj, limit=-1):
+                if tweet.id not in tweet_ids_seen:
+                    tweet_ids_seen.add(tweet.id)
+                    
+                    # Check keyword filter if specified
+                    if job.keyword:
+                        if job.keyword.lower() not in tweet.rawContent.lower():
+                            continue
+                    
+                    # Extract rich metadata
+                    tweet_data = extract_rich_metadata(tweet)
+                    tweet_data['job_label'] = job.label
+                    tweet_data['job_keyword'] = job.keyword
+                    tweet_data['search_strategy'] = job.strategy.value
+                    if job.language:
+                        tweet_data['search_language'] = job.language
+                    
+                    # Store in database
+                    storage.store_tweet(tweet_data)
+                    stats["posts"] += 1
+                    
+                    # Track for network expansion
+                    if job.enable_network_expansion:
+                        seed_tweet_ids.add(tweet.id)
+                    
+                    # Log progress and update pagination state every 100 tweets
+                    if stats["posts"] % 100 == 0:
+                        logger.info(f"[{job.label}] Stored {stats['posts']} posts")
+                        # Update pagination state with current cursor
+                        await pagination_mgr.create_or_update_state(
+                            query_hash=query_hash,
+                            query_text=query,
+                            cursor=current_cursor,
+                            items_fetched=stats["posts"],
+                            completed=False
+                        )
+                    
+                    # Get replies for this tweet (only last 30 days)
+                    try:
+                        reply_count = 0
+                        reply_limit = MAX_REPLIES_PER_TWEET if SCRAPE_ALL_REPLIES else 100
+                        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+                        
+                        async for reply in api.tweet_replies(tweet.id, limit=reply_limit):
+                            if reply.id not in tweet_ids_seen:
+                                # Check if reply is within last 30 days
+                                reply_date = reply.date if hasattr(reply, 'date') else None
+                                if reply_date and reply_date < thirty_days_ago:
+                                    logger.debug(f"[{job.label}] Skipping old reply from {reply_date.date()} (older than 30 days)")
+                                    continue
+                                
+                                tweet_ids_seen.add(reply.id)
+                                
+                                # Extract rich metadata for reply
+                                reply_data = extract_rich_metadata(reply)
+                                reply_data['job_label'] = job.label
+                                reply_data['job_keyword'] = job.keyword
+                                reply_data['in_reply_to_user_id'] = str(tweet.user.id) if hasattr(tweet.user, 'id') else None
+                                
+                                # Store reply
+                                storage.store_tweet(reply_data)
+                                stats["replies"] += 1
+                                reply_count += 1
+                        
+                        if reply_count > 0:
+                            logger.debug(f"[{job.label}] Stored {reply_count} replies (within 30 days) for tweet {tweet.id}")
+                    
+                    except Exception as e:
+                        logger.warning(f"[{job.label}] Error getting replies for {tweet.id}: {e}")
+                    
+                    # Track retweets
+                    if tweet.retweetedTweet:
+                        stats["retweets"] += 1
+        
+        # Mark query as completed with final cursor
         await pagination_mgr.create_or_update_state(
             query_hash=query_hash,
             query_text=query,
+            cursor=current_cursor,
             items_fetched=stats["posts"],
             completed=True
         )
@@ -526,21 +549,23 @@ async def scrape_job(api: API, job: ScrapingJob, storage: TweetStorage) -> Dict:
     
     except KeyboardInterrupt:
         logger.info(f"[{job.label}] Interrupted. Saving progress...")
-        # Save pagination state on interruption
+        # Save pagination state on interruption with current cursor
         await pagination_mgr.create_or_update_state(
             query_hash=query_hash,
             query_text=query,
+            cursor=current_cursor if 'current_cursor' in locals() else None,
             items_fetched=stats["posts"],
             completed=False
         )
         logger.info(f"[{job.label}] Progress saved. {stats['posts'] + stats['replies']} tweets stored. Can resume later.")
     except Exception as e:
         logger.error(f"[{job.label}] Error: {e}")
-        # Save progress even on error
+        # Save progress even on error with current cursor
         try:
             await pagination_mgr.create_or_update_state(
                 query_hash=query_hash,
                 query_text=query,
+                cursor=current_cursor if 'current_cursor' in locals() else None,
                 items_fetched=stats["posts"],
                 completed=False
             )
