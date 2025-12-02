@@ -34,6 +34,7 @@ MAX_REPLIES_PER_TWEET = -1  # -1 = unlimited, or set a number like 500
 
 import asyncio
 import json
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Dict, Optional, Set
@@ -41,8 +42,210 @@ from enum import Enum
 from twscrape import API
 from twscrape.logger import set_log_level, logger
 from twscrape.pagination_state import PaginationStateManager
-from storage_sqlite import TweetStorage
 
+# Add data-universe to path for imports
+sys.path.append('/root/data-universe')
+from common.data import DataEntity, DataLabel, DataSource
+from storage.miner.sqlite_miner_storage import SqliteMinerStorage
+
+
+# ========== UTILITY FUNCTIONS ==========
+
+def sanitize_scraped_tweet(text: str) -> str:
+    """
+    Clean up scraped tweet text for storage
+    
+    Args:
+        text: Raw tweet text
+        
+    Returns:
+        Sanitized text
+    """
+    if not text:
+        return ""
+    
+    # Remove excessive whitespace
+    text = " ".join(text.split())
+    
+    # Remove null bytes
+    text = text.replace('\x00', '')
+    
+    return text
+
+
+# ========== STORAGE CLASS ==========
+
+class DataEntityTweetStorage:
+    """Wrapper around SqliteMinerStorage to convert tweets to DataEntity format"""
+    
+    def __init__(self, db_path: str = "/root/data-universe/storage/miner/SqliteMinerStorage.sqlite"):
+        self.storage = SqliteMinerStorage(database=db_path)
+        logger.info(f"Using SqliteMinerStorage at: {db_path}")
+    
+    def store_tweet(self, tweet_data: dict) -> bool:
+        """
+        Convert tweet to DataEntity and store using SqliteMinerStorage
+        
+        Args:
+            tweet_data: Dictionary containing tweet information
+            
+        Returns:
+            True if stored successfully, False otherwise
+        """
+        try:
+            # Extract datetime for DataEntity (keep as datetime object)
+            tweet_timestamp = tweet_data.get('timestamp')
+            if isinstance(tweet_timestamp, datetime):
+                # Ensure timezone is UTC
+                if tweet_timestamp.tzinfo is None:
+                    tweet_timestamp = tweet_timestamp.replace(tzinfo=timezone.utc)
+                entity_datetime = tweet_timestamp
+            else:
+                entity_datetime = datetime.fromisoformat(tweet_data.get('timestamp'))
+            
+            # Convert datetime to UTC ISO format string for JSON serialization
+            tweet_data_copy = tweet_data.copy()
+            if isinstance(tweet_data_copy.get('timestamp'), datetime):
+                tweet_data_copy['timestamp'] = tweet_data_copy['timestamp'].replace(tzinfo=timezone.utc).isoformat()
+            
+            # Convert tweet data to JSON bytes for DataEntity content
+            content_json = json.dumps(tweet_data_copy).encode('utf-8')
+            
+            # Determine label - use job_label hashtag if available
+            label = None
+            if tweet_data.get('job_label'):
+                # Ensure label starts with # for Twitter data
+                job_label = tweet_data['job_label']
+                if not job_label.startswith('#'):
+                    job_label = f"#{job_label}"
+                label = DataLabel(value=job_label)
+            
+            # Create DataEntity
+            data_entity = DataEntity(
+                uri=tweet_data.get('url', f"x://tweet/{tweet_data.get('id')}"),
+                datetime=entity_datetime,
+                source=DataSource.X,  # X/Twitter source
+                label=label,
+                content=content_json,
+                content_size_bytes=len(content_json)
+            )
+            
+            # Store using SqliteMinerStorage
+            self.storage.store_data_entities([data_entity])
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error storing tweet {tweet_data.get('id')} as DataEntity: {e}")
+            return False
+    
+    def get_stats(self) -> dict:
+        """Get storage statistics from SqliteMinerStorage"""
+        try:
+            # Get the compressed index which contains bucket info
+            compressed_index = self.storage.get_compressed_index()
+            
+            # Get earliest date for X source
+            earliest_date = self.storage.get_earliest_data_datetime(DataSource.X)
+            
+            # Count total buckets and estimate tweets
+            total_buckets = 0
+            total_size = 0
+            labels_dict = {}
+            
+            if compressed_index and compressed_index.sources:
+                x_buckets = compressed_index.sources.get(DataSource.X, [])
+                total_buckets = len(x_buckets)
+                
+                for bucket in x_buckets:
+                    if bucket.label:
+                        labels_dict[bucket.label] = labels_dict.get(bucket.label, 0) + len(bucket.sizes_bytes)
+                    total_size += sum(bucket.sizes_bytes)
+            
+            return {
+                'total_tweets': total_buckets * 100,  # Rough estimate
+                'earliest_tweet': earliest_date.isoformat() if earliest_date else 'N/A',
+                'latest_tweet': datetime.now().isoformat(),
+                'by_label': labels_dict,
+                'total_size_mb': total_size / (1024 * 1024)
+            }
+        except Exception as e:
+            logger.error(f"Error getting stats from SqliteMinerStorage: {e}")
+            return {
+                'total_tweets': 0,
+                'earliest_tweet': 'N/A',
+                'latest_tweet': 'N/A',
+                'by_label': {},
+                'total_size_mb': 0
+            }
+
+
+# Alias for compatibility
+TweetStorage = DataEntityTweetStorage
+
+
+# ========== HELPER METHODS FOR PARSING ==========
+
+def _extract_user_info(tweet) -> dict:
+    """Extract user information from tweet"""
+    if not hasattr(tweet, 'user') or not tweet.user:
+        return {"id": None, "display_name": None, "verified": False}
+    
+    user = tweet.user
+    return {
+        "id": str(user.id) if hasattr(user, 'id') else None,
+        "display_name": user.displayname if hasattr(user, 'displayname') else None,
+        "verified": getattr(user, 'verified', False) or getattr(user, 'blueVerified', False),
+    }
+
+
+def _extract_tags(tweet) -> List[str]:
+    """Extract and format hashtags"""
+    return tweet.hashtags if hasattr(tweet, 'hashtags') else []
+
+
+def _extract_media_urls(tweet) -> List[str]:
+    """Extract media URLs from tweet"""
+    media_urls = []
+    if hasattr(tweet, 'media') and tweet.media:
+        if hasattr(tweet.media, 'photos'):
+            for photo in tweet.media.photos:
+                media_urls.append(photo.url if hasattr(photo, 'url') else str(photo))
+        if hasattr(tweet.media, 'videos'):
+            for video in tweet.media.videos:
+                if hasattr(video, 'thumbnailUrl'):
+                    media_urls.append(video.thumbnailUrl)
+    return media_urls
+
+
+def _extract_engagement_metrics(tweet) -> dict:
+    """Extract engagement metrics"""
+    return {
+        "like_count": getattr(tweet, 'likeCount', None),
+        "retweet_count": getattr(tweet, 'retweetCount', None),
+        "reply_count": getattr(tweet, 'replyCount', None),
+        "quote_count": getattr(tweet, 'quoteCount', None),
+        "view_count": getattr(tweet, 'viewCount', None),
+        "bookmark_count": getattr(tweet, 'bookmarkCount', None),
+    }
+
+
+def _extract_user_profile_data(tweet) -> dict:
+    """Extract user profile data"""
+    if not hasattr(tweet, 'user') or not tweet.user:
+        return {}
+    
+    user = tweet.user
+    return {
+        "user_blue_verified": getattr(user, 'blueVerified', None),
+        "user_description": getattr(user, 'rawDescription', None),
+        "user_location": getattr(user, 'location', None),
+        "profile_image_url": getattr(user, 'profileImageUrl', None),
+        "user_followers_count": getattr(user, 'followersCount', None),
+        "user_following_count": getattr(user, 'followingCount', None),
+    }
+
+
+# ========== MAIN CLASSES ==========
 
 class SearchStrategy(str, Enum):
     """Search strategy types for X/Twitter"""
@@ -62,8 +265,8 @@ class ScrapingJob:
                  strategy: str = "hashtag",
                  additional_filters: Optional[Dict] = None,
                  language: Optional[str] = None,
-                 enable_network_expansion: bool = False,
-                 max_network_depth: int = 1):
+                 enable_network_expansion: bool = True,
+                 max_network_depth: int = 5):
         self.label = label
         self.keyword = keyword
         self.start_datetime = start_datetime
@@ -76,15 +279,25 @@ class ScrapingJob:
         self.max_network_depth = max_network_depth
         
         # Parse dates or use defaults (last 30 days)
+        # Enhanced: Explicit handling of null dates with clear logging
         if end_datetime:
             self.end_date = datetime.fromisoformat(end_datetime.replace('Z', '+00:00'))
         else:
-            self.end_date = datetime.now()
+            self.end_date = datetime.now(timezone.utc)
+            logger.debug(f"Job {self.label}: No end_datetime provided, using current time")
         
         if start_datetime:
             self.start_date = datetime.fromisoformat(start_datetime.replace('Z', '+00:00'))
         else:
             self.start_date = self.end_date - timedelta(days=30)
+            logger.debug(f"Job {self.label}: No start_datetime provided, using 30-day default")
+        
+        # Validate job has at least label or keyword
+        if not self.label and not self.keyword:
+            logger.warning(f"Invalid job: both label and keyword are null - this job will be skipped")
+            self.is_valid = False
+        else:
+            self.is_valid = True
     
     def build_comprehensive_variants(self, base_term: str) -> List[str]:
         """
@@ -123,31 +336,82 @@ class ScrapingJob:
         
         return variants
     
+    def _build_label_query_parts(self) -> List[str]:
+        """
+        Build query parts for label-based search
+        
+        Returns:
+            List of query parts for the label
+        """
+        if not self.label:
+            return []
+        
+        # Use comprehensive variants if enabled
+        if self.additional_filters.get('use_variants', True):
+            variants = self.build_comprehensive_variants(self.label)
+            return [f"({' OR '.join(variants)})"]
+        else:
+            return [self.label]
+    
+    def _build_keyword_query_parts(self) -> List[str]:
+        """
+        Build query parts for keyword-based search
+        
+        Returns:
+            List of query parts for the keyword
+        """
+        if not self.keyword:
+            return []
+        
+        # Build keyword variants for maximum coverage
+        keyword_variants = []
+        
+        # Exact phrase match (most precise)
+        keyword_variants.append(f'"{self.keyword}"')
+        
+        # Plain keyword (broader match)
+        keyword_variants.append(self.keyword)
+        
+        return [f"({' OR '.join(keyword_variants)})"]
+    
     def build_query(self) -> str:
-        """Enhanced query builder with comprehensive search variants and advanced filters"""
-        query_parts = []
+        """
+        MAXIMUM COVERAGE query builder - combines ALL search strategies
+        Uses hashtag variants, keyword variants, AND additional strategy-specific terms
+        """
+        all_search_terms = []
         
-        # Apply search strategy
-        if self.strategy == SearchStrategy.HASHTAG:
-            # Use comprehensive variants for maximum coverage
-            if self.additional_filters.get('use_variants', True):
-                variants = self.build_comprehensive_variants(self.label)
-                # Combine with OR for broader reach
-                query_parts.append(f"({' OR '.join(variants)})")
-            else:
-                query_parts.append(self.label)
-        elif self.strategy == SearchStrategy.KEYWORD:
-            query_parts.append(f'"{self.label}"')  # Exact phrase
-        elif self.strategy == SearchStrategy.USER:
-            query_parts.append(f"from:{self.label.lstrip('@')}")
-        elif self.strategy == SearchStrategy.LOCATION:
-            query_parts.append(f"near:{self.label}")
-        elif self.strategy == SearchStrategy.ADVANCED:
-            query_parts.append(self.label)  # Use label as-is for advanced queries
+        # STRATEGY 1: Hashtag variants (always include if label exists)
+        if self.label:
+            label_variants = self.build_comprehensive_variants(self.label)
+            all_search_terms.extend(label_variants)
         
-        # Add keyword filter
+        # STRATEGY 2: Keyword variants (always include if keyword exists)
         if self.keyword:
-            query_parts.append(self.keyword)
+            # Exact phrase
+            all_search_terms.append(f'"{self.keyword}"')
+            # Plain keyword
+            all_search_terms.append(self.keyword)
+            # With hashtag (if not already a hashtag)
+            if not self.keyword.startswith('#'):
+                all_search_terms.append(f"#{self.keyword}")
+        
+        # STRATEGY 3: User-based search (if strategy is USER or label starts with @)
+        if self.strategy == SearchStrategy.USER or (self.label and self.label.startswith('@')):
+            username = self.label.lstrip('@') if self.label else self.keyword
+            if username:
+                all_search_terms.append(f"from:{username}")
+        
+        # STRATEGY 4: Mentions (search for @mentions of the term)
+        if self.label and not self.label.startswith('@'):
+            clean_label = self.label.lstrip('#$')
+            all_search_terms.append(f"@{clean_label}")
+        
+        # Build the main query with OR logic for maximum coverage
+        query_parts = []
+        if all_search_terms:
+            # Combine all search terms with OR
+            query_parts.append(f"({' OR '.join(all_search_terms)})")
         
         # Advanced filters
         filters = self.additional_filters
@@ -221,64 +485,51 @@ class ScrapingJob:
 
 def extract_rich_metadata(tweet) -> Dict:
     """
-    Extract rich metadata from tweet object
-    Similar to ApiDojoTwitterScraper parsing logic
+    Extract rich metadata from tweet object using helper methods
+    Refactored for better maintainability and structure
     """
     try:
-        # Basic tweet data
+        # Extract components using helper methods
+        user_info = _extract_user_info(tweet)
+        tags = _extract_tags(tweet)
+        media_urls = _extract_media_urls(tweet)
+        engagement_metrics = _extract_engagement_metrics(tweet)
+        user_profile_data = _extract_user_profile_data(tweet)
+        
+        # Build complete tweet data dictionary
         tweet_data = {
+            # Basic tweet data
             'id': str(tweet.id),
             'url': tweet.url,
             'username': tweet.user.username,
-            'user_id': str(tweet.user.id) if hasattr(tweet.user, 'id') else None,
-            'user_display_name': tweet.user.displayname if hasattr(tweet.user, 'displayname') else None,
-            'text': tweet.rawContent,
+            'text': sanitize_scraped_tweet(tweet.rawContent),
             'timestamp': tweet.date,
             'source': 2,  # X/Twitter
+            
+            # User info from helper
+            'user_id': user_info['id'],
+            'user_display_name': user_info['display_name'],
+            'user_verified': user_info['verified'],
+            
+            # Tweet metadata
+            'language': tweet.lang if hasattr(tweet, 'lang') else None,
+            'is_reply': tweet.inReplyToTweetId is not None,
+            'is_retweet': tweet.retweetedTweet is not None,
+            'is_quote': tweet.quotedTweet is not None,
+            'in_reply_to_user_id': str(tweet.inReplyToTweetId) if tweet.inReplyToTweetId else None,
+            'quoted_tweet_id': str(tweet.quotedTweet.id) if tweet.quotedTweet else None,
+            'conversation_id': str(tweet.conversationId) if hasattr(tweet, 'conversationId') else None,
+            
+            # Content
+            'hashtags': tags,
+            'media_urls': media_urls,
         }
         
-        # Tweet metadata
-        tweet_data['language'] = tweet.lang if hasattr(tweet, 'lang') else None
-        tweet_data['is_reply'] = tweet.inReplyToTweetId is not None
-        tweet_data['is_retweet'] = tweet.retweetedTweet is not None
-        tweet_data['is_quote'] = tweet.quotedTweet is not None
-        tweet_data['in_reply_to_user_id'] = str(tweet.inReplyToTweetId) if tweet.inReplyToTweetId else None
-        tweet_data['quoted_tweet_id'] = str(tweet.quotedTweet.id) if tweet.quotedTweet else None
-        tweet_data['conversation_id'] = str(tweet.conversationId) if hasattr(tweet, 'conversationId') else None
+        # Add engagement metrics
+        tweet_data.update(engagement_metrics)
         
-        # Engagement metrics
-        tweet_data['like_count'] = tweet.likeCount if hasattr(tweet, 'likeCount') else None
-        tweet_data['retweet_count'] = tweet.retweetCount if hasattr(tweet, 'retweetCount') else None
-        tweet_data['reply_count'] = tweet.replyCount if hasattr(tweet, 'replyCount') else None
-        tweet_data['quote_count'] = tweet.quoteCount if hasattr(tweet, 'quoteCount') else None
-        tweet_data['view_count'] = tweet.viewCount if hasattr(tweet, 'viewCount') else None
-        tweet_data['bookmark_count'] = tweet.bookmarkCount if hasattr(tweet, 'bookmarkCount') else None
-        
-        # User profile data
-        if hasattr(tweet, 'user') and tweet.user:
-            user = tweet.user
-            tweet_data['user_verified'] = getattr(user, 'verified', False)
-            tweet_data['user_blue_verified'] = getattr(user, 'blueVerified', False)
-            tweet_data['user_description'] = getattr(user, 'rawDescription', None)
-            tweet_data['user_location'] = getattr(user, 'location', None)
-            tweet_data['user_followers_count'] = getattr(user, 'followersCount', None)
-            tweet_data['user_following_count'] = getattr(user, 'followingCount', None)
-            tweet_data['profile_image_url'] = getattr(user, 'profileImageUrl', None)
-        
-        # Hashtags
-        tweet_data['hashtags'] = tweet.hashtags if hasattr(tweet, 'hashtags') else []
-        
-        # Media URLs
-        media_urls = []
-        if hasattr(tweet, 'media') and tweet.media:
-            if hasattr(tweet.media, 'photos'):
-                for photo in tweet.media.photos:
-                    media_urls.append(photo.url if hasattr(photo, 'url') else str(photo))
-            if hasattr(tweet.media, 'videos'):
-                for video in tweet.media.videos:
-                    if hasattr(video, 'thumbnailUrl'):
-                        media_urls.append(video.thumbnailUrl)
-        tweet_data['media_urls'] = media_urls
+        # Add user profile data
+        tweet_data.update(user_profile_data)
         
         return tweet_data
     
@@ -289,7 +540,7 @@ def extract_rich_metadata(tweet) -> Dict:
             'id': str(tweet.id),
             'url': tweet.url,
             'username': tweet.user.username,
-            'text': tweet.rawContent,
+            'text': sanitize_scraped_tweet(tweet.rawContent) if hasattr(tweet, 'rawContent') else '',
             'timestamp': tweet.date,
             'source': 2,
         }
@@ -386,10 +637,35 @@ async def scrape_job(api: API, job: ScrapingJob, storage: TweetStorage) -> Dict:
     """
     from twscrape.models import parse_tweets
     
+    # Validate job before execution
+    if not job.is_valid:
+        logger.error(f"Skipping invalid job: {job}")
+        return {
+            "job": str(job),
+            "query": "",
+            "posts": 0,
+            "replies": 0,
+            "retweets": 0,
+            "total": 0,
+            "start_time": datetime.now().isoformat(),
+            "end_time": datetime.now().isoformat(),
+            "error": "Invalid job - both label and keyword are null"
+        }
+    
     query = job.build_query()
     logger.info(f"Starting job: {job}")
     logger.info(f"Query: {query}")
     logger.info(f"Strategy: {job.strategy.value}")
+    
+    # Log search strategy being used
+    if job.label and job.keyword:
+        logger.info(f"Search strategy: MAXIMUM COVERAGE - combining label and keyword with OR logic")
+        logger.info(f"  Label: {job.label}")
+        logger.info(f"  Keyword: {job.keyword}")
+    elif job.label:
+        logger.info(f"Search strategy: LABEL-ONLY - {job.label}")
+    elif job.keyword:
+        logger.info(f"Search strategy: KEYWORD-ONLY - {job.keyword}")
     
     # Show search variants if using HASHTAG strategy with variants enabled
     if job.strategy == SearchStrategy.HASHTAG and job.additional_filters.get('use_variants', True):
@@ -436,116 +712,300 @@ async def scrape_job(api: API, job: ScrapingJob, storage: TweetStorage) -> Dict:
     }
     
     try:
-        # Scrape main posts using raw API to track cursors
-        logger.info(f"[{job.label}] Searching posts...")
-        current_cursor = resume_cursor
-        
-        # Build kv dict with cursor if resuming
+        # Build kv dict - IMPORTANT: cursor must be in kv dict from the start for resume
         search_kv = {}
         if resume_cursor:
             search_kv["cursor"] = resume_cursor
-            logger.info(f"[{job.label}] Starting from saved cursor position")
+            logger.info(f"[{job.label}] Resuming from saved cursor: {resume_cursor[:50]}...")
         
-        async for rep in api.search_raw(query, limit=-1, kv=search_kv if search_kv else None):
-            # Extract cursor from response
-            obj = rep.json()
-            from twscrape.utils import find_obj
-            cursor_obj = find_obj(obj, lambda x: x.get("cursorType") == "Bottom")
-            if cursor_obj:
-                current_cursor = cursor_obj.get("value")
-            
-            # Parse tweets from response
-            for tweet in parse_tweets(obj, limit=-1):
-                if tweet.id not in tweet_ids_seen:
-                    tweet_ids_seen.add(tweet.id)
-                    
-                    # Check keyword filter if specified
-                    if job.keyword:
-                        if job.keyword.lower() not in tweet.rawContent.lower():
-                            continue
-                    
-                    # Extract rich metadata
-                    tweet_data = extract_rich_metadata(tweet)
-                    tweet_data['job_label'] = job.label
-                    tweet_data['job_keyword'] = job.keyword
-                    tweet_data['search_strategy'] = job.strategy.value
-                    if job.language:
-                        tweet_data['search_language'] = job.language
-                    
-                    # Store in database
-                    storage.store_tweet(tweet_data)
-                    stats["posts"] += 1
-                    
-                    # Track for network expansion
-                    if job.enable_network_expansion:
-                        seed_tweet_ids.add(tweet.id)
-                    
-                    # Log progress and update pagination state every 100 tweets
-                    if stats["posts"] % 100 == 0:
-                        logger.info(f"[{job.label}] Stored {stats['posts']} posts")
-                        # Update pagination state with current cursor
-                        await pagination_mgr.create_or_update_state(
-                            query_hash=query_hash,
-                            query_text=query,
-                            cursor=current_cursor,
-                            items_fetched=stats["posts"],
-                            completed=False
-                        )
-                    
-                    # Get replies for this tweet (only last 30 days)
-                    try:
-                        reply_count = 0
-                        reply_limit = MAX_REPLIES_PER_TWEET if SCRAPE_ALL_REPLIES else 100
-                        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
-                        
-                        async for reply in api.tweet_replies(tweet.id, limit=reply_limit):
-                            if reply.id not in tweet_ids_seen:
-                                # Check if reply is within last 30 days
-                                reply_date = reply.date if hasattr(reply, 'date') else None
-                                if reply_date and reply_date < thirty_days_ago:
-                                    logger.debug(f"[{job.label}] Skipping old reply from {reply_date.date()} (older than 30 days)")
-                                    continue
-                                
-                                tweet_ids_seen.add(reply.id)
-                                
-                                # Extract rich metadata for reply
-                                reply_data = extract_rich_metadata(reply)
-                                reply_data['job_label'] = job.label
-                                reply_data['job_keyword'] = job.keyword
-                                reply_data['in_reply_to_user_id'] = str(tweet.user.id) if hasattr(tweet.user, 'id') else None
-                                
-                                # Store reply
-                                storage.store_tweet(reply_data)
-                                stats["replies"] += 1
-                                reply_count += 1
-                        
-                        if reply_count > 0:
-                            logger.debug(f"[{job.label}] Stored {reply_count} replies (within 30 days) for tweet {tweet.id}")
-                    
-                    except Exception as e:
-                        logger.warning(f"[{job.label}] Error getting replies for {tweet.id}: {e}")
-                    
-                    # Track retweets
-                    if tweet.retweetedTweet:
-                        stats["retweets"] += 1
+        # Use standard search (not search_raw) with limit=-1 for unlimited pagination
+        # The API handles cursor management internally when limit=-1
+        logger.info(f"[{job.label}] Starting unlimited pagination search...")
         
-        # Mark query as completed with final cursor
+        async for tweet in api.search(query, limit=-1, kv=search_kv if search_kv else None):
+            if tweet.id not in tweet_ids_seen:
+                tweet_ids_seen.add(tweet.id)
+                
+                # Check keyword filter if specified
+                if job.keyword:
+                    if job.keyword.lower() not in tweet.rawContent.lower():
+                        continue
+                
+                # Extract rich metadata
+                tweet_data = extract_rich_metadata(tweet)
+                tweet_data['job_label'] = job.label
+                tweet_data['job_keyword'] = job.keyword
+                tweet_data['search_strategy'] = job.strategy.value
+                if job.language:
+                    tweet_data['search_language'] = job.language
+                
+                # Store in database
+                storage.store_tweet(tweet_data)
+                stats["posts"] += 1
+                
+                # Track for network expansion
+                if job.enable_network_expansion:
+                    seed_tweet_ids.add(tweet.id)
+                
+                # Log progress every 100 tweets
+                if stats["posts"] % 100 == 0:
+                    logger.info(f"[{job.label}] Stored {stats['posts']} posts")
+                
+                # Get replies for this tweet (only last 30 days)
+                try:
+                    reply_count = 0
+                    reply_limit = MAX_REPLIES_PER_TWEET if SCRAPE_ALL_REPLIES else 100
+                    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+                    
+                    async for reply in api.tweet_replies(tweet.id, limit=reply_limit):
+                        if reply.id not in tweet_ids_seen:
+                            # Check if reply is within last 30 days
+                            reply_date = reply.date if hasattr(reply, 'date') else None
+                            if reply_date and reply_date < thirty_days_ago:
+                                logger.debug(f"[{job.label}] Skipping old reply from {reply_date.date()} (older than 30 days)")
+                                continue
+                            
+                            tweet_ids_seen.add(reply.id)
+                            
+                            # Extract rich metadata for reply
+                            reply_data = extract_rich_metadata(reply)
+                            reply_data['job_label'] = job.label
+                            reply_data['job_keyword'] = job.keyword
+                            reply_data['in_reply_to_user_id'] = str(tweet.user.id) if hasattr(tweet.user, 'id') else None
+                            
+                            # Store reply
+                            storage.store_tweet(reply_data)
+                            stats["replies"] += 1
+                            reply_count += 1
+                    
+                    if reply_count > 0:
+                        logger.debug(f"[{job.label}] Stored {reply_count} replies (within 30 days) for tweet {tweet.id}")
+                
+                except Exception as e:
+                    logger.warning(f"[{job.label}] Error getting replies for {tweet.id}: {e}")
+                
+                # Track retweets
+                if tweet.retweetedTweet:
+                    stats["retweets"] += 1
+        
+        # Mark query as completed (no cursor tracking needed with api.search)
         await pagination_mgr.create_or_update_state(
             query_hash=query_hash,
             query_text=query,
-            cursor=current_cursor,
+            cursor=None,  # api.search manages cursors internally
             items_fetched=stats["posts"],
             completed=True
         )
         logger.info(f"[{job.label}] Query marked as completed in pagination state")
         
-        # Network expansion phase
+        # FALLBACK: If no results with language filter, try high-volume languages
+        if stats["posts"] == 0 and job.language and job.language != 'all':
+            logger.warning(f"[{job.label}] No results with language '{job.language}'. Trying high-volume languages...")
+            
+            # Try top 3 languages: English, Japanese, Spanish
+            fallback_languages = ['en', 'ja', 'es']
+            original_lang = job.language
+            
+            for fallback_lang in fallback_languages:
+                if fallback_lang == original_lang:
+                    continue  # Skip the one we already tried
+                
+                logger.info(f"[{job.label}] Trying fallback language: {fallback_lang}")
+                job.language = fallback_lang
+                fallback_query = job.build_query()
+                
+                # Try this language
+                fallback_found = False
+                
+                async for tweet in api.search(fallback_query, limit=-1):
+                    if tweet.id not in tweet_ids_seen:
+                        fallback_found = True
+                        tweet_ids_seen.add(tweet.id)
+                        
+                        if job.keyword and job.keyword.lower() not in tweet.rawContent.lower():
+                            continue
+                        
+                        tweet_data = extract_rich_metadata(tweet)
+                        tweet_data['job_label'] = job.label
+                        tweet_data['job_keyword'] = job.keyword
+                        tweet_data['search_strategy'] = f"{job.strategy.value}_fallback_{fallback_lang}"
+                        
+                        storage.store_tweet(tweet_data)
+                        stats["posts"] += 1
+                        
+                        if job.enable_network_expansion:
+                            seed_tweet_ids.add(tweet.id)
+                        
+                        if stats["posts"] % 100 == 0:
+                            logger.info(f"[{job.label}] Fallback ({fallback_lang}): {stats['posts']} posts")
+                        
+                        # Get replies
+                        try:
+                            reply_count = 0
+                            reply_limit = MAX_REPLIES_PER_TWEET if SCRAPE_ALL_REPLIES else 100
+                            thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+                            
+                            async for reply in api.tweet_replies(tweet.id, limit=reply_limit):
+                                if reply.id not in tweet_ids_seen:
+                                    reply_date = reply.date if hasattr(reply, 'date') else None
+                                    if reply_date and reply_date < thirty_days_ago:
+                                        continue
+                                    
+                                    tweet_ids_seen.add(reply.id)
+                                    reply_data = extract_rich_metadata(reply)
+                                    reply_data['job_label'] = job.label
+                                    reply_data['job_keyword'] = job.keyword
+                                    storage.store_tweet(reply_data)
+                                    stats["replies"] += 1
+                                    reply_count += 1
+                        except Exception as e:
+                            logger.warning(f"[{job.label}] Fallback error getting replies: {e}")
+                        
+                        if tweet.retweetedTweet:
+                            stats["retweets"] += 1
+                
+                # Check if we found tweets with this language
+                if fallback_found and stats["posts"] > 0:
+                    logger.info(f"[{job.label}] ✓ Fallback SUCCESS with '{fallback_lang}': {stats['posts']} total tweets")
+                    break  # Found tweets, stop trying other languages
+                else:
+                    logger.info(f"[{job.label}] No results with '{fallback_lang}', trying next language...")
+            
+            # Restore original language
+            job.language = original_lang
+            
+            if stats["posts"] == 0:
+                logger.warning(f"[{job.label}] ✗ Fallback FAILED: No tweets found in any fallback languages (en, ja, es)")
+        
+        # PHASE 2 & 3: Advanced Collection Strategies
         if job.enable_network_expansion and seed_tweet_ids:
-            logger.info(f"[{job.label}] Starting network expansion from {len(seed_tweet_ids)} tweets...")
-            network_stats = await expand_network(
-                api, storage, seed_tweet_ids, job, job.max_network_depth
+            logger.info(f"[{job.label}] Starting ENHANCED collection strategies...")
+            
+            # Prepare seed data for advanced strategies
+            seed_tweets_data = []
+            seed_user_ids = set()
+            
+            # Collect seed tweet data and user IDs for analysis
+            for tweet_id in list(seed_tweet_ids)[:200]:  # Sample for analysis
+                try:
+                    tweet_detail = await api.tweet_details(int(tweet_id))
+                    if tweet_detail:
+                        tweet_data = extract_rich_metadata(tweet_detail)
+                        seed_tweets_data.append(tweet_data)
+                        if tweet_data.get('user_id'):
+                            seed_user_ids.add(tweet_data['user_id'])
+                except Exception as e:
+                    logger.debug(f"Could not get details for tweet {tweet_id}: {e}")
+            
+            logger.info(f"[{job.label}] Collected {len(seed_tweets_data)} seed tweets for analysis")
+            
+            # Import collection strategies
+            from collection_strategies import (
+                collect_deep_conversations,
+                collect_influencer_timelines,
+                collect_from_retweeters,
+                matches_job_criteria
             )
-            stats.update(network_stats)
+            
+            thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+            job_context = {
+                'label': job.label,
+                'keyword': job.keyword,
+                'start_date': job.start_date,
+                'end_date': job.end_date
+            }
+            
+            # PHASE 2: Deep Conversation Threading
+            logger.info(f"[{job.label}] PHASE 2: Collecting deep conversation threads...")
+            deep_conv_count = 0
+            try:
+                async for tweet_data in collect_deep_conversations(
+                    api,
+                    [str(tid) for tid in list(seed_tweet_ids)[:100]],  # Process top 100
+                    job_context,
+                    max_depth=5,
+                    thirty_days_ago=thirty_days_ago
+                ):
+                    tweet_data['job_label'] = job.label
+                    tweet_data['job_keyword'] = job.keyword
+                    storage.store_tweet(tweet_data)
+                    deep_conv_count += 1
+                    
+                    if deep_conv_count % 100 == 0:
+                        logger.info(f"[{job.label}] Deep conversations: {deep_conv_count} tweets")
+                
+                logger.info(f"[{job.label}] PHASE 2 Complete: {deep_conv_count} tweets from deep conversations")
+                stats['deep_conversations'] = deep_conv_count
+            except Exception as e:
+                logger.warning(f"[{job.label}] Error in deep conversation collection: {e}")
+                stats['deep_conversations'] = deep_conv_count
+            
+            # PHASE 3: Influencer Timeline Collection
+            if len(seed_tweets_data) > 10:  # Need enough data for analysis
+                logger.info(f"[{job.label}] PHASE 3: Collecting influencer timelines...")
+                influencer_count = 0
+                try:
+                    async for tweet_data in collect_influencer_timelines(
+                        api,
+                        seed_tweets_data,
+                        job_context,
+                        top_n=30,
+                        tweets_per_user=200,
+                        thirty_days_ago=thirty_days_ago
+                    ):
+                        # Filter for relevance
+                        if matches_job_criteria(tweet_data, job_context):
+                            tweet_data['job_label'] = job.label
+                            tweet_data['job_keyword'] = job.keyword
+                            storage.store_tweet(tweet_data)
+                            influencer_count += 1
+                            
+                            if influencer_count % 100 == 0:
+                                logger.info(f"[{job.label}] Influencer timelines: {influencer_count} tweets")
+                    
+                    logger.info(f"[{job.label}] PHASE 3 Complete: {influencer_count} tweets from influencers")
+                    stats['influencer_timelines'] = influencer_count
+                except Exception as e:
+                    logger.warning(f"[{job.label}] Error in influencer collection: {e}")
+                    stats['influencer_timelines'] = influencer_count
+            else:
+                logger.info(f"[{job.label}] Skipping influencer collection (insufficient seed data)")
+                stats['influencer_timelines'] = 0
+            
+            # PHASE 4: Retweeter Discovery  
+            logger.info(f"[{job.label}] PHASE 4: Collecting from retweeters...")
+            retweeter_count = 0
+            try:
+                async for tweet_data in collect_from_retweeters(
+                    api,
+                    [str(tid) for tid in list(seed_tweet_ids)[:50]],  # Process top 50
+                    job_context,
+                    retweeters_per_tweet=100,
+                    tweets_per_retweeter=50,
+                    thirty_days_ago=thirty_days_ago
+                ):
+                    if matches_job_criteria(tweet_data, job_context):
+                        tweet_data['job_label'] = job.label
+                        tweet_data['job_keyword'] = job.keyword
+                        storage.store_tweet(tweet_data)
+                        retweeter_count += 1
+                        
+                        if retweeter_count % 100 == 0:
+                            logger.info(f"[{job.label}] Retweeter discovery: {retweeter_count} tweets")
+                
+                logger.info(f"[{job.label}] PHASE 4 Complete: {retweeter_count} tweets from retweeters")
+                stats['retweeter_discovery'] = retweeter_count
+            except Exception as e:
+                logger.warning(f"[{job.label}] Error in retweeter collection: {e}")
+                stats['retweeter_discovery'] = retweeter_count
+            
+            # Calculate total from all enhanced strategies
+            enhanced_total = (
+                stats.get('deep_conversations', 0) +
+                stats.get('influencer_timelines', 0) +
+                stats.get('retweeter_discovery', 0)
+            )
+            logger.info(f"[{job.label}] ENHANCED STRATEGIES Total: {enhanced_total} additional tweets")
     
     except KeyboardInterrupt:
         logger.info(f"[{job.label}] Interrupted. Saving progress...")
@@ -587,7 +1047,7 @@ async def scrape_jobs_concurrently(jobs: List[ScrapingJob], max_concurrent: int 
     When a worker finishes a job, it immediately picks up the next one from the queue
     """
     # Create storage
-    storage = TweetStorage("tweets.db")
+    storage = TweetStorage()  # Uses twitter_miner_data.sqlite
     
     # Create API instance (shared across jobs)
     api = API("accounts.db")
@@ -700,20 +1160,53 @@ def load_jobs_from_json(filepath: str) -> List[ScrapingJob]:
     jobs = []
     new_jobs = []
     old_jobs = []
+    skipped_jobs = 0
     
     for item in data:
-        job = ScrapingJob(
-            label=item.get('label'),
-            keyword=item.get('keyword'),
-            start_datetime=item.get('start_datetime'),
-            end_datetime=item.get('end_datetime'),
-            weight=item.get('weight', 1.0),
-            strategy=item.get('strategy', 'hashtag'),
-            additional_filters=item.get('additional_filters'),
-            language=item.get('language'),
-            enable_network_expansion=item.get('enable_network_expansion', False),
-            max_network_depth=item.get('max_network_depth', 1),
-        )
+        # Handle new format with params nested structure
+        if 'params' in item:
+            params = item['params']
+            job_id = item.get('id', 'unknown')
+            weight = item.get('weight', 1.0)
+            
+            # Extract from params
+            label = params.get('label')
+            keyword = params.get('keyword')
+            start_datetime = params.get('post_start_datetime')
+            end_datetime = params.get('post_end_datetime')
+            
+            job = ScrapingJob(
+                label=label,
+                keyword=keyword,
+                start_datetime=start_datetime,
+                end_datetime=end_datetime,
+                weight=weight,
+                strategy=params.get('strategy', 'hashtag'),
+                additional_filters=params.get('additional_filters'),
+                language=params.get('language'),
+                enable_network_expansion=params.get('enable_network_expansion', True),  # Enable by default
+                max_network_depth=params.get('max_network_depth', 2),  # Increased default
+            )
+        else:
+            # Handle old format (backward compatibility)
+            job = ScrapingJob(
+                label=item.get('label'),
+                keyword=item.get('keyword'),
+                start_datetime=item.get('start_datetime'),
+                end_datetime=item.get('end_datetime'),
+                weight=item.get('weight', 1.0),
+                strategy=item.get('strategy', 'hashtag'),
+                additional_filters=item.get('additional_filters'),
+                language=item.get('language'),
+                enable_network_expansion=item.get('enable_network_expansion', True),
+                max_network_depth=item.get('max_network_depth', 2),
+            )
+        
+        # Skip invalid jobs (both label and keyword are null)
+        if not job.is_valid:
+            logger.warning(f"Skipping invalid job: label={job.label}, keyword={job.keyword}")
+            skipped_jobs += 1
+            continue
         
         # Prioritize new jobs from gravity
         if item.get('is_new', False):
@@ -727,6 +1220,9 @@ def load_jobs_from_json(filepath: str) -> List[ScrapingJob]:
     
     if new_jobs_sorted:
         logger.info(f"Prioritizing {len(new_jobs_sorted)} NEW jobs from gravity")
+    
+    if skipped_jobs > 0:
+        logger.warning(f"Skipped {skipped_jobs} invalid jobs (null label and keyword)")
     
     return new_jobs_sorted + old_jobs_sorted
 
@@ -821,8 +1317,8 @@ async def main():
         network_str = " [+network]" if job.enable_network_expansion else ""
         logger.info(f"  {i}. {job.label}{keyword_str}{lang_str}{strategy_str}{network_str} ({job.start_date.date()} to {job.end_date.date()})")
     
-    # Start scraping (max 25 concurrent to avoid overwhelming the system)
-    await scrape_jobs_concurrently(jobs, max_concurrent=25)
+    # Start scraping (max 50 concurrent to avoid overwhelming the system)
+    await scrape_jobs_concurrently(jobs, max_concurrent=50)
 
 
 if __name__ == "__main__":

@@ -52,51 +52,37 @@ class JobMonitor:
         try:
             if self.output_file.exists():
                 with open(self.output_file, 'r') as f:
-                    existing_jobs = json.load(f)
+                    content = f.read().strip()
+                    if not content:
+                        logger.warning(f"{self.output_file} is empty, initializing with empty array")
+                        existing_jobs = []
+                    else:
+                        existing_jobs = json.loads(content)
+                    
                     for job in existing_jobs:
                         job_hash = self.generate_job_hash({'params': job})
                         self.known_jobs.add(job_hash)
                 logger.info(f"Loaded {len(self.known_jobs)} existing jobs from {self.output_file}")
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in {self.output_file}: {e}")
+            logger.info(f"Reinitializing {self.output_file} with empty array")
+            with open(self.output_file, 'w') as f:
+                json.dump([], f)
+            self.known_jobs = set()
         except Exception as e:
             logger.warning(f"Could not load existing jobs: {e}")
             self.known_jobs = set()
     
     def convert_gravity_to_x_format(self, gravity_job: Dict) -> Dict:
-        """Convert gravity/total.json format to x.json format"""
+        """Copy gravity/total.json jobs exactly as they are for X platform"""
         params = gravity_job.get('params', {})
         
         # Only process X/Twitter jobs
         if params.get('platform') != 'x':
             return None
         
-        # Extract parameters
-        label = params.get('label')
-        keyword = params.get('keyword')
-        
-        # Use provided datetimes or default to last 30 days
-        end_datetime = params.get('post_end_datetime')
-        start_datetime = params.get('post_start_datetime')
-        
-        # Build the job
-        x_job = {
-            'label': label,
-            'keyword': keyword,
-            'start_datetime': start_datetime,
-            'end_datetime': end_datetime,
-            'weight': gravity_job.get('weight', 1.0),
-            'strategy': 'hashtag',  # Default strategy
-            'additional_filters': {
-                'use_variants': True  # Enable comprehensive search variants
-            },
-            'enable_network_expansion': False,  # Can be enabled for important jobs
-            'max_network_depth': 1,
-            'added_timestamp': datetime.now(timezone.utc).isoformat(),
-            'is_new': True,  # Mark as new for prioritization
-            'gravity_id': gravity_job.get('id'),
-            'gravity_weight': gravity_job.get('weight', 1.0)
-        }
-        
-        return x_job
+        # Return the job exactly as it is in total.json
+        return gravity_job
     
     def detect_new_jobs(self) -> List[Dict]:
         """Detect new jobs in gravity/total.json that aren't in x.json"""
@@ -119,7 +105,8 @@ class JobMonitor:
                     if x_job:  # Only if it's an X/Twitter job
                         new_jobs.append(x_job)
                         self.known_jobs.add(job_hash)
-                        logger.info(f"New job detected: {x_job['label']} (keyword: {x_job['keyword']})")
+                        params = x_job.get('params', {})
+                        logger.info(f"New job detected: {params.get('label')} (keyword: {params.get('keyword')})")
             
             return new_jobs
         
@@ -137,7 +124,11 @@ class JobMonitor:
             existing_jobs = []
             if self.output_file.exists():
                 with open(self.output_file, 'r') as f:
-                    existing_jobs = json.load(f)
+                    content = f.read().strip()
+                    if content:
+                        existing_jobs = json.loads(content)
+                    else:
+                        existing_jobs = []
             
             # Mark existing jobs as not new
             for job in existing_jobs:
@@ -156,7 +147,8 @@ class JobMonitor:
             
             # Log the new jobs
             for job in new_jobs_sorted:
-                logger.info(f"  → {job['label']} (weight: {job['gravity_weight']}, keyword: {job['keyword']})")
+                params = job.get('params', {})
+                logger.info(f"  → {params.get('label')} (weight: {job.get('weight', 1.0)}, keyword: {params.get('keyword')})")
         
         except Exception as e:
             logger.error(f"Error updating x.json: {e}")
