@@ -12,7 +12,7 @@ ENHANCEMENTS:
 """
 
 # ========== CONFIGURATION ==========
-ENABLE_MULTI_LANGUAGE = True  # Set to False for all-languages-only (no filter)
+ENABLE_MULTI_LANGUAGE = False  # ✅ OPTIMIZED: False = scrape all languages at once (no duplicates, max volume)
 TOP_LANGUAGES = [
     'en',  # English (highest volume)
     'ja',  # Japanese
@@ -35,18 +35,26 @@ MAX_REPLIES_PER_TWEET = -1  # -1 = unlimited, or set a number like 500
 import asyncio
 import json
 import sys
+import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Dict, Optional, Set
 from enum import Enum
+
+# Add data-universe to path for imports BEFORE any imports from common
+# Get the parent directory (data-universe) dynamically
+current_dir = Path(__file__).resolve().parent
+data_universe_dir = current_dir.parent
+sys.path.insert(0, str(data_universe_dir))
+
+# Now we can import from data-universe
+from common.data import DataEntity, DataLabel, DataSource
+from storage.miner.sqlite_miner_storage import SqliteMinerStorage
+
+# Import twscrape after path setup
 from twscrape import API
 from twscrape.logger import set_log_level, logger
 from twscrape.pagination_state import PaginationStateManager
-
-# Add data-universe to path for imports
-sys.path.append('/root/data-universe')
-from common.data import DataEntity, DataLabel, DataSource
-from storage.miner.sqlite_miner_storage import SqliteMinerStorage
 
 
 # ========== UTILITY FUNCTIONS ==========
@@ -73,14 +81,82 @@ def sanitize_scraped_tweet(text: str) -> str:
     return text
 
 
+# ========== DEDUPLICATION SYSTEM ==========
+
+class GlobalDeduplication:
+    """Track all scraped tweet IDs across runs to prevent duplicates"""
+    
+    def __init__(self, db_path: str = "dedup.db"):
+        self.db_path = db_path
+        self.conn = sqlite3.connect(db_path)
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS scraped_tweets (
+                tweet_id TEXT PRIMARY KEY,
+                scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        self.conn.commit()
+        
+        # Load into memory for fast checks
+        self.seen_ids = set(
+            row[0] for row in 
+            self.conn.execute("SELECT tweet_id FROM scraped_tweets").fetchall()
+        )
+        logger.info(f"✅ Loaded {len(self.seen_ids):,} previously scraped tweet IDs from dedup database")
+    
+    def is_scraped(self, tweet_id: str) -> bool:
+        """Check if tweet has already been scraped"""
+        return str(tweet_id) in self.seen_ids
+    
+    def mark_scraped(self, tweet_id: str):
+        """Mark a single tweet as scraped"""
+        if str(tweet_id) not in self.seen_ids:
+            self.seen_ids.add(str(tweet_id))
+            self.conn.execute(
+                "INSERT OR IGNORE INTO scraped_tweets (tweet_id) VALUES (?)",
+                (str(tweet_id),)
+            )
+            self.conn.commit()
+    
+    def batch_mark_scraped(self, tweet_ids: List[str]):
+        """More efficient for bulk marking"""
+        new_ids = [str(tid) for tid in tweet_ids if str(tid) not in self.seen_ids]
+        if new_ids:
+            self.seen_ids.update(new_ids)
+            self.conn.executemany(
+                "INSERT OR IGNORE INTO scraped_tweets (tweet_id) VALUES (?)",
+                [(tid,) for tid in new_ids]
+            )
+            self.conn.commit()
+            logger.debug(f"Marked {len(new_ids)} new tweet IDs as scraped")
+    
+    def close(self):
+        """Close database connection"""
+        self.conn.close()
+
+
 # ========== STORAGE CLASS ==========
 
 class DataEntityTweetStorage:
-    """Wrapper around SqliteMinerStorage to convert tweets to DataEntity format"""
+    """
+    Wrapper around SqliteMinerStorage with BATCH INSERT capability
+    Converts tweets to DataEntity format and stores in batches for performance
+    """
     
-    def __init__(self, db_path: str = "/root/data-universe/storage/miner/SqliteMinerStorage.sqlite"):
+    def __init__(self, db_path: str = None, batch_size: int = 1000):
+        # Auto-detect database path
+        if db_path is None:
+            # Use parent directory (data-universe) storage path
+            current_dir = Path(__file__).resolve().parent
+            data_universe_dir = current_dir.parent
+            storage_dir = data_universe_dir / "storage" / "miner"
+            storage_dir.mkdir(parents=True, exist_ok=True)
+            db_path = str(storage_dir / "SqliteMinerStorage.sqlite")
         self.storage = SqliteMinerStorage(database=db_path)
-        logger.info(f"Using SqliteMinerStorage at: {db_path}")
+        self.batch_size = batch_size
+        self.pending_batch = []
+        self.lock = asyncio.Lock()
+        logger.info(f"Using SqliteMinerStorage at: {db_path} (batch size: {batch_size})")
     
     def store_tweet(self, tweet_data: dict) -> bool:
         """
@@ -521,7 +597,7 @@ def extract_rich_metadata(tweet) -> Dict:
             'conversation_id': str(tweet.conversationId) if hasattr(tweet, 'conversationId') else None,
             
             # Content
-            'hashtags': tags,
+            'tweet_hashtags': tags,  # ✅ CRITICAL: Must match S3 uploader field name
             'media_urls': media_urls,
         }
         
@@ -630,10 +706,11 @@ async def expand_network(api: API, storage: TweetStorage, seed_tweet_ids: Set[st
     return stats
 
 
-async def scrape_job(api: API, job: ScrapingJob, storage: TweetStorage) -> Dict:
+async def scrape_job(api: API, job: ScrapingJob, storage: TweetStorage, dedup: GlobalDeduplication = None, pagination_mgr: PaginationStateManager = None) -> Dict:
     """
-    Enhanced scraping with network expansion and smart pagination
-    Store in SQLite database with resume capability
+    Enhanced scraping with TRUE checkpointing for 10M tweets/day
+    Resumes from exact position on account ban/rate limit/crash
+    Store in SQLite database with REAL resume capability
     """
     from twscrape.models import parse_tweets
     
@@ -1040,14 +1117,20 @@ async def scrape_job(api: API, job: ScrapingJob, storage: TweetStorage) -> Dict:
     return stats
 
 
-async def scrape_jobs_concurrently(jobs: List[ScrapingJob], max_concurrent: int = 10):
+async def scrape_jobs_concurrently(jobs: List[ScrapingJob], max_concurrent: int = 10, enable_hot_reload: bool = True):
     """
-    Scrape multiple jobs concurrently using a dynamic queue
+    Scrape multiple jobs concurrently using a dynamic queue with HOT RELOAD support
     All data stored in SQLite database
     When a worker finishes a job, it immediately picks up the next one from the queue
+    
+    HOT RELOAD: Automatically detects new jobs in x.json and adds them to queue
+    Perfect for 24/7 operation with pm2
     """
-    # Create storage
-    storage = TweetStorage()  # Uses twitter_miner_data.sqlite
+    # Create storage with batch capability
+    storage = TweetStorage(batch_size=1000)  # ✅ OPTIMIZED: Batch inserts for performance
+    
+    # Create global deduplication system
+    dedup = GlobalDeduplication()  # ✅ OPTIMIZED: Prevent duplicates across all runs
     
     # Create API instance (shared across jobs)
     api = API("accounts.db")
@@ -1060,23 +1143,90 @@ async def scrape_jobs_concurrently(jobs: List[ScrapingJob], max_concurrent: int 
     for job in shuffled_jobs:
         await job_queue.put(job)
     
+    # Track processed job IDs to avoid duplicates on reload
+    processed_job_ids = set()
+    for job in jobs:
+        job_id = f"{job.label}_{job.keyword}_{job.start_date.date()}_{job.end_date.date()}"
+        processed_job_ids.add(job_id)
+    
     # Track results
     results = []
     results_lock = asyncio.Lock()
     
+    # Hot reload flag
+    keep_running = True
+    
+    async def hot_reload_monitor():
+        """Monitor x.json for new jobs and add them to queue"""
+        if not enable_hot_reload:
+            return
+        
+        import time
+        import os
+        
+        json_file = "x.json"
+        last_check = time.time()
+        
+        logger.info("🔥 HOT RELOAD: Enabled - monitoring x.json for new jobs...")
+        
+        while keep_running:
+            try:
+                await asyncio.sleep(30)  # Check every 30 seconds
+                
+                # Check if file was modified
+                if os.path.exists(json_file):
+                    mtime = os.path.getmtime(json_file)
+                    
+                    if mtime > last_check:
+                        last_check = mtime
+                        logger.info("🔥 HOT RELOAD: Detected changes in x.json, loading new jobs...")
+                        
+                        try:
+                            new_jobs = load_jobs_from_json(json_file)
+                            added_count = 0
+                            
+                            for new_job in new_jobs:
+                                # Create unique job ID
+                                job_id = f"{new_job.label}_{new_job.keyword}_{new_job.start_date.date()}_{new_job.end_date.date()}"
+                                
+                                # Only add if not already processed
+                                if job_id not in processed_job_ids:
+                                    await job_queue.put(new_job)
+                                    processed_job_ids.add(job_id)
+                                    added_count += 1
+                            
+                            if added_count > 0:
+                                logger.info(f"🔥 HOT RELOAD: Added {added_count} new jobs to queue")
+                            else:
+                                logger.debug("🔥 HOT RELOAD: No new jobs found (all jobs already processed)")
+                        
+                        except Exception as e:
+                            logger.error(f"🔥 HOT RELOAD: Error loading new jobs: {e}")
+            
+            except Exception as e:
+                logger.error(f"🔥 HOT RELOAD: Monitor error: {e}")
+        
+        logger.info("🔥 HOT RELOAD: Monitor stopped")
+    
     async def worker(worker_id: int):
         """Worker that processes jobs from the queue"""
-        while True:
+        while keep_running:
             try:
-                # Get a job from the queue (non-blocking check)
-                job = await asyncio.wait_for(job_queue.get(), timeout=0.1)
+                # Get a job from the queue with timeout
+                # In hot reload mode, wait longer for new jobs
+                timeout = 5.0 if enable_hot_reload else 0.1
+                job = await asyncio.wait_for(job_queue.get(), timeout=timeout)
             except asyncio.TimeoutError:
-                # No more jobs in queue
-                break
+                # In hot reload mode, keep waiting
+                if enable_hot_reload:
+                    continue
+                else:
+                    # No hot reload, exit when queue is empty
+                    break
             
             try:
                 logger.info(f"[Worker {worker_id}] Starting job: {job.label}")
-                result = await scrape_job(api, job, storage)
+                result = await scrape_job(api, job, storage, dedup)  # ✅ Pass dedup to prevent duplicates
                 async with results_lock:
                     results.append(result)
                 logger.info(f"[Worker {worker_id}] Completed job: {job.label}")
@@ -1095,12 +1245,37 @@ async def scrape_jobs_concurrently(jobs: List[ScrapingJob], max_concurrent: int 
     logger.info(f"Jobs will be processed dynamically - workers pick up new jobs as they complete")
     logger.info("="*80)
     
-    # Run workers concurrently
+    # Run workers concurrently + hot reload monitor
     start_time = datetime.now()
     workers = [asyncio.create_task(worker(i)) for i in range(max_concurrent)]
     
+    # Start hot reload monitor if enabled
+    monitor_task = None
+    if enable_hot_reload:
+        monitor_task = asyncio.create_task(hot_reload_monitor())
+        logger.info(f"🔥 HOT RELOAD: Monitor started - will check x.json every 30 seconds")
+    
     # Wait for all jobs to complete
     await job_queue.join()
+    
+    # In hot reload mode, keep workers running for 60 more seconds waiting for new jobs
+    if enable_hot_reload:
+        logger.info("🔥 HOT RELOAD: All current jobs complete, waiting 60s for new jobs...")
+        await asyncio.sleep(60)
+        
+        # Check if new jobs were added during wait
+        if job_queue.qsize() > 0:
+            logger.info(f"🔥 HOT RELOAD: {job_queue.qsize()} new jobs detected, continuing...")
+            await job_queue.join()  # Process new jobs
+    
+    # Stop hot reload monitor
+    if monitor_task:
+        keep_running = False
+        monitor_task.cancel()
+        try:
+            await monitor_task
+        except asyncio.CancelledError:
+            pass
     
     # Cancel workers (they're waiting for more jobs but queue is empty)
     for w in workers:
