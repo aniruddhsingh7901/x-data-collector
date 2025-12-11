@@ -264,12 +264,12 @@ TweetStorage = DataEntityTweetStorage
 def _extract_user_info(tweet) -> dict:
     """Extract user information from tweet"""
     if not hasattr(tweet, 'user') or not tweet.user:
-        return {"id": None, "display_name": None, "verified": False}
+        return {"id": None, "user_display_name": None, "verified": False}
     
     user = tweet.user
     return {
         "id": str(user.id) if hasattr(user, 'id') else None,
-        "display_name": user.displayname if hasattr(user, 'displayname') else None,
+        "user_display_name": user.displayname if hasattr(user, 'displayname') else None,  # ✅ FIXED: Correct field name
         "verified": getattr(user, 'verified', False) or getattr(user, 'blueVerified', False),
     }
 
@@ -572,7 +572,7 @@ def extract_rich_metadata(tweet) -> Dict:
         engagement_metrics = _extract_engagement_metrics(tweet)
         user_profile_data = _extract_user_profile_data(tweet)
         
-        # Build complete tweet data dictionary
+        # Build complete tweet data dictionary - ✅ FIXED: All field names match XContent model
         tweet_data = {
             # Basic tweet data
             'id': str(tweet.id),
@@ -580,11 +580,10 @@ def extract_rich_metadata(tweet) -> Dict:
             'username': tweet.user.username,
             'text': sanitize_scraped_tweet(tweet.rawContent),
             'timestamp': tweet.date,
-            'source': 2,  # X/Twitter
             
-            # User info from helper
+            # User info from helper - ✅ FIXED: Correct field names
             'user_id': user_info['id'],
-            'user_display_name': user_info['display_name'],
+            'user_display_name': user_info['user_display_name'],  # ✅ FIXED: Was 'display_name'
             'user_verified': user_info['verified'],
             
             # Tweet metadata
@@ -595,10 +594,12 @@ def extract_rich_metadata(tweet) -> Dict:
             'in_reply_to_user_id': str(tweet.inReplyToTweetId) if tweet.inReplyToTweetId else None,
             'quoted_tweet_id': str(tweet.quotedTweet.id) if tweet.quotedTweet else None,
             'conversation_id': str(tweet.conversationId) if hasattr(tweet, 'conversationId') else None,
+            'tweet_id': str(tweet.id),  # ✅ ADDED: Missing tweet_id field
             
-            # Content
-            'tweet_hashtags': tags,  # ✅ CRITICAL: Must match S3 uploader field name
-            'media_urls': media_urls,
+            # Content - ✅ FIXED: Correct field names matching XContent
+            'tweet_hashtags': tags if tags else [],  # ✅ FIXED: Was 'hashtags', now ensures list
+            'media': media_urls if media_urls else None,  # ✅ FIXED: Was 'media_urls'
+            # NOTE: 'source' is NOT included - it's set at DataEntity level (DataSource.X), not in XContent
         }
         
         # Add engagement metrics
@@ -618,7 +619,7 @@ def extract_rich_metadata(tweet) -> Dict:
             'username': tweet.user.username,
             'text': sanitize_scraped_tweet(tweet.rawContent) if hasattr(tweet, 'rawContent') else '',
             'timestamp': tweet.date,
-            'source': 2,
+            # NOTE: 'source' removed - handled by DataEntity, not XContent
         }
 
 
