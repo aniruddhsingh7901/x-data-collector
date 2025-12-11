@@ -1493,8 +1493,9 @@ async def main():
         network_str = " [+network]" if job.enable_network_expansion else ""
         logger.info(f"  {i}. {job.label}{keyword_str}{lang_str}{strategy_str}{network_str} ({job.start_date.date()} to {job.end_date.date()})")
     
-    # Start scraping (max 50 concurrent to avoid overwhelming the system)
-    await scrape_jobs_concurrently(jobs, max_concurrent=50)
+    # Start scraping with 2 workers for testing (set to 50+ for production)
+    # Each worker picks up 1 job at a time, ensuring 1:1 worker-to-job ratio
+    await scrape_jobs_concurrently(jobs, max_concurrent=2)
 
 
 if __name__ == "__main__":
