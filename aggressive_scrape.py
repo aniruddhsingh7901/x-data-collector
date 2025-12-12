@@ -55,6 +55,7 @@ from storage.miner.sqlite_miner_storage import SqliteMinerStorage
 from twscrape import API
 from twscrape.logger import set_log_level, logger
 from twscrape.pagination_state import PaginationStateManager
+from twscrape.accounts_pool import NoAccountError
 
 
 # ========== UTILITY FUNCTIONS ==========
@@ -385,8 +386,12 @@ class ScrapingJob:
         Returns:
             List of query variants
         """
+        # Safely handle missing base_term to avoid None.lstrip() crashes
+        if not base_term:
+            return []
+
         # Remove # or $ if present to get base
-        clean_term = base_term.lstrip('#$').strip()
+        clean_term = str(base_term).lstrip('#$').strip()
         
         variants = []
         
@@ -473,13 +478,15 @@ class ScrapingJob:
                 all_search_terms.append(f"#{self.keyword}")
         
         # STRATEGY 3: User-based search (if strategy is USER or label starts with @)
-        if self.strategy == SearchStrategy.USER or (self.label and self.label.startswith('@')):
-            username = self.label.lstrip('@') if self.label else self.keyword
+        if self.strategy == SearchStrategy.USER or (isinstance(self.label, str) and self.label.startswith('@')):
+            # Safely derive username from label or fall back to keyword
+            label_username = self.label.lstrip('@') if isinstance(self.label, str) else None
+            username = label_username or self.keyword
             if username:
                 all_search_terms.append(f"from:{username}")
         
         # STRATEGY 4: Mentions (search for @mentions of the term)
-        if self.label and not self.label.startswith('@'):
+        if isinstance(self.label, str) and self.label and not self.label.startswith('@'):
             clean_label = self.label.lstrip('#$')
             all_search_terms.append(f"@{clean_label}")
         
@@ -543,11 +550,14 @@ class ScrapingJob:
         if filters.get('url_contains'):
             query_parts.append(f"url:{filters['url_contains']}")
         
-        # Mention/to filters
-        if filters.get('to_user'):
-            query_parts.append(f"to:{filters['to_user'].lstrip('@')}")
-        if filters.get('mention_user'):
-            query_parts.append(f"@{filters['mention_user'].lstrip('@')}")
+        # Mention/to filters (defensive against None values)
+        to_user = filters.get('to_user')
+        if isinstance(to_user, str) and to_user:
+            query_parts.append(f"to:{to_user.lstrip('@')}")
+
+        mention_user = filters.get('mention_user')
+        if isinstance(mention_user, str) and mention_user:
+            query_parts.append(f"@{mention_user.lstrip('@')}")
         
         # Date range
         query_parts.append(f"since:{self.start_date.strftime('%Y-%m-%d')}")
@@ -770,10 +780,15 @@ async def scrape_job(api: API, job: ScrapingJob, storage: TweetStorage, dedup: G
     existing_state = await pagination_mgr.get_state(query_hash)
     resume_cursor = None
     if existing_state and not existing_state.get('completed'):
-        resume_cursor = existing_state.get('cursor')
-        logger.info(f"[{job.label}] Resuming from previous run - {existing_state['items_fetched']} tweets already collected")
-        if resume_cursor:
-            logger.info(f"[{job.label}] Resuming from cursor: {resume_cursor[:20]}...")
+        # NOTE: We intentionally restart this daily window from the beginning
+        # and rely on GlobalDeduplication to skip already-stored tweets.
+        # This is simpler and more robust than trying to persist low-level
+        # search cursors across library / schema changes.
+        already = existing_state.get('items_fetched', 0)
+        logger.info(
+            f"[{job.label}] Previous incomplete run detected for this window – "
+            f"will restart from beginning and skip ~{already} already-stored tweets via dedup."
+        )
     
     tweet_ids_seen = set()
     seed_tweet_ids = set()  # For network expansion
@@ -797,74 +812,138 @@ async def scrape_job(api: API, job: ScrapingJob, storage: TweetStorage, dedup: G
             logger.info(f"[{job.label}] Resuming from saved cursor: {resume_cursor[:50]}...")
         
         # Use standard search (not search_raw) with limit=-1 for unlimited pagination
-        # The API handles cursor management internally when limit=-1
+        # The API handles cursor management internally when limit=-1. If all
+        # accounts for SearchTimeline are exhausted, API will raise
+        # NoAccountError (because we passed raise_when_no_account=True). We
+        # catch that below and WAIT/RETRY the same day window instead of
+        # silently treating it as completed.
         logger.info(f"[{job.label}] Starting unlimited pagination search...")
         
-        async for tweet in api.search(query, limit=-1, kv=search_kv if search_kv else None):
-            if tweet.id not in tweet_ids_seen:
-                tweet_ids_seen.add(tweet.id)
-                
-                # Check keyword filter if specified
-                if job.keyword:
-                    if job.keyword.lower() not in tweet.rawContent.lower():
-                        continue
-                
-                # Extract rich metadata
-                tweet_data = extract_rich_metadata(tweet)
-                tweet_data['job_label'] = job.label
-                tweet_data['job_keyword'] = job.keyword
-                tweet_data['search_strategy'] = job.strategy.value
-                if job.language:
-                    tweet_data['search_language'] = job.language
-                
-                # Store in database
-                storage.store_tweet(tweet_data)
-                stats["posts"] += 1
-                
-                # Track for network expansion
-                if job.enable_network_expansion:
-                    seed_tweet_ids.add(tweet.id)
-                
-                # Log progress every 100 tweets
-                if stats["posts"] % 100 == 0:
-                    logger.info(f"[{job.label}] Stored {stats['posts']} posts")
-                
-                # Get replies for this tweet (only last 30 days)
-                try:
-                    reply_count = 0
-                    reply_limit = MAX_REPLIES_PER_TWEET if SCRAPE_ALL_REPLIES else 100
-                    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
-                    
-                    async for reply in api.tweet_replies(tweet.id, limit=reply_limit):
-                        if reply.id not in tweet_ids_seen:
-                            # Check if reply is within last 30 days
-                            reply_date = reply.date if hasattr(reply, 'date') else None
-                            if reply_date and reply_date < thirty_days_ago:
-                                logger.debug(f"[{job.label}] Skipping old reply from {reply_date.date()} (older than 30 days)")
+        while True:
+            try:
+                async for tweet in api.search(query, limit=-1, kv=search_kv if search_kv else None):
+                    if tweet.id not in tweet_ids_seen:
+                        tweet_ids_seen.add(tweet.id)
+
+                        # Global dedup check: skip if this tweet ID was already stored
+                        if dedup is not None and dedup.is_scraped(str(tweet.id)):
+                            continue
+                        
+                        # Check keyword filter if specified
+                        if job.keyword:
+                            if job.keyword.lower() not in tweet.rawContent.lower():
                                 continue
+                        
+                        # Extract rich metadata
+                        tweet_data = extract_rich_metadata(tweet)
+                        tweet_data['job_label'] = job.label
+                        tweet_data['job_keyword'] = job.keyword
+                        tweet_data['search_strategy'] = job.strategy.value
+                        if job.language:
+                            tweet_data['search_language'] = job.language
+                        
+                        # Store in database (with dedup tracking)
+                        stored_ok = storage.store_tweet(tweet_data)
+                        if stored_ok and dedup is not None:
+                            dedup.mark_scraped(tweet_data.get('tweet_id') or tweet_data.get('id') or str(tweet.id))
+                        stats["posts"] += 1
+                        
+                        # Track for network expansion
+                        if job.enable_network_expansion:
+                            seed_tweet_ids.add(tweet.id)
+                        
+                        # Log progress every 100 tweets
+                        if stats["posts"] % 100 == 0:
+                            logger.info(f"[{job.label}] Stored {stats['posts']} posts")
+                        
+                        # Get replies for this tweet (only last 30 days)
+                        try:
+                            reply_count = 0
+                            reply_limit = MAX_REPLIES_PER_TWEET if SCRAPE_ALL_REPLIES else 100
+                            thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
                             
-                            tweet_ids_seen.add(reply.id)
+                            async for reply in api.tweet_replies(tweet.id, limit=reply_limit):
+                                if reply.id not in tweet_ids_seen:
+                                    # Check if reply is within last 30 days
+                                    reply_date = reply.date if hasattr(reply, 'date') else None
+                                    if reply_date and reply_date < thirty_days_ago:
+                                        logger.debug(f"[{job.label}] Skipping old reply from {reply_date.date()} (older than 30 days)")
+                                        continue
+                                    
+                                    tweet_ids_seen.add(reply.id)
+                                    
+                                    # Extract rich metadata for reply
+                                    reply_data = extract_rich_metadata(reply)
+                                    reply_data['job_label'] = job.label
+                                    reply_data['job_keyword'] = job.keyword
+                                    reply_data['in_reply_to_user_id'] = str(tweet.user.id) if hasattr(tweet.user, 'id') else None
+                                    
+                                    # Store reply with dedup check
+                                    if dedup is not None and dedup.is_scraped(str(reply.id)):
+                                        continue
+                                    stored_ok = storage.store_tweet(reply_data)
+                                    if stored_ok and dedup is not None:
+                                        dedup.mark_scraped(reply_data.get('tweet_id') or reply_data.get('id') or str(reply.id))
+                                    stats["replies"] += 1
+                                    reply_count += 1
                             
-                            # Extract rich metadata for reply
-                            reply_data = extract_rich_metadata(reply)
-                            reply_data['job_label'] = job.label
-                            reply_data['job_keyword'] = job.keyword
-                            reply_data['in_reply_to_user_id'] = str(tweet.user.id) if hasattr(tweet.user, 'id') else None
-                            
-                            # Store reply
-                            storage.store_tweet(reply_data)
-                            stats["replies"] += 1
-                            reply_count += 1
-                    
-                    if reply_count > 0:
-                        logger.debug(f"[{job.label}] Stored {reply_count} replies (within 30 days) for tweet {tweet.id}")
-                
+                            if reply_count > 0:
+                                logger.debug(f"[{job.label}] Stored {reply_count} replies (within 30 days) for tweet {tweet.id}")
+                        
+                        except Exception as e:
+                            logger.warning(f"[{job.label}] Error getting replies for {tweet.id}: {e}")
+                        
+                        # Track retweets
+                        if tweet.retweetedTweet:
+                            stats["retweets"] += 1
+
+                # If we reach here, the search finished normally (we hit bottom
+                # of the day window without NoAccountError), so we can break
+                # out of the retry loop.
+                break
+            except NoAccountError:
+                # All accounts for the SearchTimeline queue are exhausted.
+                # Use AccountsPool.next_available_at to choose a smart sleep
+                # time so we wake up shortly after the first account unlocks.
+                try:
+                    nat = await api.pool.next_available_at("SearchTimeline")
                 except Exception as e:
-                    logger.warning(f"[{job.label}] Error getting replies for {tweet.id}: {e}")
-                
-                # Track retweets
-                if tweet.retweetedTweet:
-                    stats["retweets"] += 1
+                    nat = None
+                    logger.warning(
+                        f"[{job.label}] Failed to get next_available_at for SearchTimeline: {e}"
+                    )
+
+                # Default wait if we can't get a better hint
+                wait_seconds = 60
+
+                if nat:
+                    if nat == "now":
+                        # At least one account should already be unlockable; just
+                        # wait a tiny bit to avoid hammering.
+                        wait_seconds = 5
+                    else:
+                        # nat is a local-time string like HH:MM:SS. Convert it to
+                        # a datetime today and compute the difference.
+                        try:
+                            now_local = datetime.now()
+                            today = now_local.strftime("%Y-%m-%d")
+                            target = datetime.fromisoformat(f"{today}T{nat}")
+                            if target <= now_local:
+                                wait_seconds = 5
+                            else:
+                                # Add a small buffer, but cap at 15 minutes
+                                wait_seconds = int((target - now_local).total_seconds()) + 5
+                                wait_seconds = max(5, min(wait_seconds, 60 * 15))
+                        except Exception:
+                            # If parsing fails, keep the default 60s
+                            pass
+
+                logger.warning(
+                    f"[{job.label}] No accounts available for SearchTimeline; "
+                    f"sleeping {wait_seconds}s (next available at {nat or 'unknown'}) and retrying this day window..."
+                )
+                await asyncio.sleep(wait_seconds)
+                continue
         
         # Mark query as completed (no cursor tracking needed with api.search)
         await pagination_mgr.create_or_update_state(
@@ -899,6 +978,10 @@ async def scrape_job(api: API, job: ScrapingJob, storage: TweetStorage, dedup: G
                     if tweet.id not in tweet_ids_seen:
                         fallback_found = True
                         tweet_ids_seen.add(tweet.id)
+
+                        # Global dedup check for fallback searches
+                        if dedup is not None and dedup.is_scraped(str(tweet.id)):
+                            continue
                         
                         if job.keyword and job.keyword.lower() not in tweet.rawContent.lower():
                             continue
@@ -908,7 +991,9 @@ async def scrape_job(api: API, job: ScrapingJob, storage: TweetStorage, dedup: G
                         tweet_data['job_keyword'] = job.keyword
                         tweet_data['search_strategy'] = f"{job.strategy.value}_fallback_{fallback_lang}"
                         
-                        storage.store_tweet(tweet_data)
+                        stored_ok = storage.store_tweet(tweet_data)
+                        if stored_ok and dedup is not None:
+                            dedup.mark_scraped(tweet_data.get('tweet_id') or tweet_data.get('id') or str(tweet.id))
                         stats["posts"] += 1
                         
                         if job.enable_network_expansion:
@@ -930,10 +1015,17 @@ async def scrape_job(api: API, job: ScrapingJob, storage: TweetStorage, dedup: G
                                         continue
                                     
                                     tweet_ids_seen.add(reply.id)
+
+                                    # Dedup for fallback replies
+                                    if dedup is not None and dedup.is_scraped(str(reply.id)):
+                                        continue
+
                                     reply_data = extract_rich_metadata(reply)
                                     reply_data['job_label'] = job.label
                                     reply_data['job_keyword'] = job.keyword
-                                    storage.store_tweet(reply_data)
+                                    stored_ok = storage.store_tweet(reply_data)
+                                    if stored_ok and dedup is not None:
+                                        dedup.mark_scraped(reply_data.get('tweet_id') or reply_data.get('id') or str(reply.id))
                                     stats["replies"] += 1
                                     reply_count += 1
                         except Exception as e:
@@ -1087,28 +1179,38 @@ async def scrape_job(api: API, job: ScrapingJob, storage: TweetStorage, dedup: G
     
     except KeyboardInterrupt:
         logger.info(f"[{job.label}] Interrupted. Saving progress...")
-        # Save pagination state on interruption with current cursor
+        # Save pagination state on interruption. We don't persist the low-level
+        # cursor; instead we record how many posts were stored so far and rely
+        # on dedup to skip them when this window is re-run.
         await pagination_mgr.create_or_update_state(
             query_hash=query_hash,
             query_text=query,
-            cursor=current_cursor if 'current_cursor' in locals() else None,
+            cursor=None,
             items_fetched=stats["posts"],
             completed=False
         )
-        logger.info(f"[{job.label}] Progress saved. {stats['posts'] + stats['replies']} tweets stored. Can resume later.")
+        logger.info(
+            f"[{job.label}] Progress saved. {stats['posts'] + stats['replies']} tweets stored so far. "
+            "Next run will restart this window from the beginning and dedup will skip duplicates."
+        )
     except Exception as e:
         logger.error(f"[{job.label}] Error: {e}")
-        # Save progress even on error with current cursor
+        # Save progress even on error. Same strategy: record counts, restart
+        # from the beginning next time, and rely on dedup for exactness.
         try:
             await pagination_mgr.create_or_update_state(
                 query_hash=query_hash,
                 query_text=query,
-                cursor=current_cursor if 'current_cursor' in locals() else None,
+                cursor=None,
                 items_fetched=stats["posts"],
                 completed=False
             )
-        except:
-            pass
+            logger.info(
+                f"[{job.label}] Saved partial progress after error. Next run will "
+                "restart this window and dedup will skip already-stored tweets."
+            )
+        except Exception as save_err:
+            logger.warning(f"[{job.label}] Failed to save pagination state after error: {save_err}")
     
     # Calculate stats
     stats["total"] = stats["posts"] + stats["replies"]
@@ -1134,7 +1236,10 @@ async def scrape_jobs_concurrently(jobs: List[ScrapingJob], max_concurrent: int 
     dedup = GlobalDeduplication()  # ✅ OPTIMIZED: Prevent duplicates across all runs
     
     # Create API instance (shared across jobs)
-    api = API("accounts.db")
+    # raise_when_no_account=True => if all accounts for a queue are exhausted,
+    # twscrape raises NoAccountError instead of silently returning None. We
+    # catch that in scrape_job and WAIT/RETRY the same day window.
+    api = API("accounts.db", raise_when_no_account=True)
     
     # Create a queue and add all jobs
     import random
@@ -1328,6 +1433,54 @@ async def scrape_jobs_concurrently(jobs: List[ScrapingJob], max_concurrent: int 
     logger.info("="*80)
 
 
+def split_job_into_daily_windows(base_job: ScrapingJob) -> List[ScrapingJob]:
+    """Split a ScrapingJob into 1-day windows from start_date to end_date.
+
+    This helps us fully walk the time range by smaller chunks, increasing
+    coverage for high-volume queries (e.g., "champions league").
+    """
+    windows: List[ScrapingJob] = []
+
+    # Defensive: if dates are somehow misconfigured, just return the base job
+    current_start = getattr(base_job, "start_date", None)
+    end = getattr(base_job, "end_date", None)
+    if not current_start or not end or current_start >= end:
+        return [base_job]
+
+    while current_start < end:
+        current_end = min(current_start + timedelta(days=1), end)
+
+        # Ensure ISO8601 with Z suffix for compatibility with existing JSON format
+        start_iso = current_start.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+        end_iso = current_end.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+        windows.append(
+            ScrapingJob(
+                label=base_job.label,
+                keyword=base_job.keyword,
+                start_datetime=start_iso,
+                end_datetime=end_iso,
+                weight=base_job.weight,
+                strategy=base_job.strategy.value if isinstance(base_job.strategy, SearchStrategy) else base_job.strategy,
+                additional_filters=base_job.additional_filters.copy() if base_job.additional_filters else {},
+                language=base_job.language,
+                enable_network_expansion=base_job.enable_network_expansion,
+                max_network_depth=base_job.max_network_depth,
+            )
+        )
+
+        current_start = current_end
+
+    # Log how many daily windows we created for visibility
+    logger.info(
+        f"Split job (label={base_job.label}, keyword={base_job.keyword}, "
+        f"start={getattr(base_job, 'start_date', None)}, end={getattr(base_job, 'end_date', None)}) "
+        f"into {len(windows)} daily windows"
+    )
+
+    return windows or [base_job]
+
+
 def load_jobs_from_json(filepath: str) -> List[ScrapingJob]:
     """Load scraping jobs from JSON file with enhanced parameters and prioritization"""
     with open(filepath, 'r') as f:
@@ -1383,12 +1536,22 @@ def load_jobs_from_json(filepath: str) -> List[ScrapingJob]:
             logger.warning(f"Skipping invalid job: label={job.label}, keyword={job.keyword}")
             skipped_jobs += 1
             continue
+
+        # Split each logical job into 1-day windows so we walk the full
+        # time range in smaller chunks. This increases coverage and works
+        # better with pagination + dedup.
+        sub_jobs = split_job_into_daily_windows(job)
+
+        logger.info(
+            f"Expanded JSON job (id={item.get('id', 'unknown')}, label={job.label}, keyword={job.keyword}) "
+            f"into {len(sub_jobs)} daily sub-jobs"
+        )
         
         # Prioritize new jobs from gravity
         if item.get('is_new', False):
-            new_jobs.append(job)
+            new_jobs.extend(sub_jobs)
         else:
-            old_jobs.append(job)
+            old_jobs.extend(sub_jobs)
     
     # Return new jobs first (sorted by weight), then old jobs
     new_jobs_sorted = sorted(new_jobs, key=lambda x: x.weight, reverse=True)
