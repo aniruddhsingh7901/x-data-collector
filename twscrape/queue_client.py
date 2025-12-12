@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 import httpx
 from httpx import AsyncClient, Response
 
-from .accounts_pool import Account, AccountsPool
+from .accounts_pool import Account, AccountsPool, NoAccountError
 from .logger import logger
 from .utils import utc
 from .xclid import XClIdGen
@@ -189,16 +189,23 @@ class QueueClient:
             logger.error(f"[DEV] Update required: {err_msg}")
             exit(1)
 
-        # general api rate limit
+        # general api rate limit (hard limit reached exactly)
         if limit_remaining == 0 and limit_reset > 0:
             logger.debug(f"Rate limited: {log_msg}")
             await self._close_ctx(limit_reset)
             raise HandledError()
 
-        # no way to check is account banned in direct way, but this check should work
-        if err_msg.startswith("(88) Rate limit exceeded") and limit_remaining > 0:
-            logger.warning(f"Ban detected: {log_msg}")
-            await self._close_ctx(-1, inactive=True, msg=err_msg)
+        # (88) Rate limit exceeded – treat as TEMPORARY per-queue lock, not a
+        # permanent ban. In practice, X can send this message even when
+        # x-rate-limit-remaining > 0, but from the scraper's perspective this
+        # should behave like a soft rate limit:
+        #   - lock this account for this queue until limit_reset (or 15m fallback)
+        #   - let other accounts take over
+        #   - allow this account to be reused after the lock expires
+        if err_msg.startswith("(88) Rate limit exceeded"):
+            logger.warning(f"Rate limit exceeded (code 88): {log_msg}")
+            reset_at = limit_reset if limit_reset > 0 else utc.ts() + 60 * 15
+            await self._close_ctx(reset_at)
             raise HandledError()
 
         if err_msg.startswith("(326) Authorization: Denied by access control"):
@@ -265,6 +272,11 @@ class QueueClient:
                 ctx.req_count += 1  # count only successful
                 unknown_retry, connection_retry = 0, 0
                 return rep
+            except NoAccountError:
+                # Propagate NoAccountError so higher-level code (e.g. scrape_job)
+                # can decide to WAIT/RETRY the current window instead of
+                # silently treating it as completion or an unknown error.
+                raise
             except AbortReqError:
                 # abort all queries
                 return
